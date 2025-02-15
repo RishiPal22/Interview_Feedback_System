@@ -4,11 +4,13 @@ import { useReactMediaRecorder } from "react-media-recorder";
 
 interface AudioRecorderProps {
   username: string;
+  email: string;
+  userId: string;
 }
 
-const AudioRecorder = ({ username }: AudioRecorderProps) => {
+const AudioRecorder = ({ username, email, userId }: AudioRecorderProps) => {
   const { startRecording, stopRecording, mediaBlobUrl } =
-    useReactMediaRecorder({ video: true });
+    useReactMediaRecorder({ audio: true });
 
   useEffect(() => {
     async function sendVideo() {
@@ -18,9 +20,17 @@ const AudioRecorder = ({ username }: AudioRecorderProps) => {
           const blob = await response.blob();
           const randomNum = Math.floor(Math.random() * 10000);
           const fileName = `${username}_${randomNum}.mp4`;
-          const { error } = await supabase.storage.from("videosstore").upload(fileName, blob);
+          const { data, error } = await supabase.storage.from("videosstore").upload(fileName, blob);
           if (error) {
             console.error("Error uploading new video:", error.message);
+          } else {
+            const videoUrl = data.path;
+            await supabase.from("videos").insert({
+              user_id: userId,
+              username,
+              email,
+              video_url: videoUrl,
+            });
           }
         } catch (error) {
           console.error("Error fetching video blob:", error);
@@ -28,7 +38,7 @@ const AudioRecorder = ({ username }: AudioRecorderProps) => {
       }
     }
     sendVideo();
-  }, [mediaBlobUrl, username]);
+  }, [mediaBlobUrl, username, email, userId]);
 
   return (
     <div>
