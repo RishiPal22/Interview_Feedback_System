@@ -1,16 +1,28 @@
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from "@/Client";
-import { useEffect } from "react";
 import { useReactMediaRecorder } from "react-media-recorder";
+import { Camera, StopCircle, Disc, Eye, EyeOff } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 
-interface AudioRecorderProps {
+interface VideoRecorderProps {
   username: string;
   email: string;
   userId: string;
 }
 
-const AudioRecorder = ({ username, email, userId }: AudioRecorderProps) => {
-  const { startRecording, stopRecording, mediaBlobUrl } =
-    useReactMediaRecorder({ audio: true });
+const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
+  const [isRecording, setIsRecording] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const videoPreviewRef = useRef<HTMLVideoElement>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+
+  const { startRecording, stopRecording, mediaBlobUrl, clearBlobUrl } = 
+    useReactMediaRecorder({
+      audio: true,
+      video: true,
+      onStart: () => setIsRecording(true),
+      onStop: () => setIsRecording(false)
+    });
 
   useEffect(() => {
     async function sendVideo() {
@@ -20,9 +32,13 @@ const AudioRecorder = ({ username, email, userId }: AudioRecorderProps) => {
           const blob = await response.blob();
           const randomNum = Math.floor(Math.random() * 10000);
           const fileName = `${username}_${randomNum}.mp4`;
-          const { data, error } = await supabase.storage.from("videosstore").upload(fileName, blob);
+          
+          const { data, error } = await supabase.storage
+            .from("videosstore")
+            .upload(fileName, blob);
+            
           if (error) {
-            console.error("Error uploading new video:", error.message);
+            console.error("Error uploading video:", error.message);
           } else {
             const videoUrl = data.path;
             await supabase.from("videos").insert({
@@ -33,26 +49,150 @@ const AudioRecorder = ({ username, email, userId }: AudioRecorderProps) => {
             });
           }
         } catch (error) {
-          console.error("Error fetching video blob:", error);
+          console.error("Error processing video:", error);
         }
       }
     }
     sendVideo();
   }, [mediaBlobUrl, username, email, userId]);
 
-  return (
-    <div>
-      <h2>Video Recorder</h2>
-      <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-        onClick={startRecording}> Start Recording</button><br />
-      <button className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-        onClick={stopRecording}> Stop Recording</button>
+  const startPreview = async () => {
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
+        video: true, 
+        audio: true 
+      });
+      if (videoPreviewRef.current) {
+        videoPreviewRef.current.srcObject = mediaStream;
+        setStream(mediaStream);
+      }
+      setShowPreview(true);
+    } catch (err) {
+      console.error("Error accessing camera:", err);
+    }
+  };
 
-      {mediaBlobUrl && (
-        <video src={mediaBlobUrl} controls />
-      )}
-    </div>
+  const stopPreview = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+    setShowPreview(false);
+  };
+
+  const handleStartRecording = () => {
+    if (!showPreview) {
+      startPreview();
+    }
+    startRecording();
+  };
+
+  const handleStopRecording = () => {
+    stopRecording();
+    stopPreview();
+  };
+
+  const handleNewRecording = () => {
+    clearBlobUrl();
+    stopPreview();
+  };
+
+  return (
+    <Card className="w-full max-w-2xl mx-auto">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Camera className="w-6 h-6" />
+          <span>Video Recorder</span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {/* Preview Window */}
+          {showPreview && !mediaBlobUrl && (
+            <div className="relative rounded-lg overflow-hidden bg-gray-900 aspect-video">
+              <video
+                ref={videoPreviewRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-full object-cover"
+              />
+              {isRecording && (
+                <div className="absolute top-4 right-4 flex items-center gap-2 bg-red-500 px-3 py-1 rounded-full text-white">
+                  <div className="w-3 h-3 rounded-full bg-white animate-pulse" />
+                  <span className="text-sm">Recording</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Recorded Video Playback */}
+          {mediaBlobUrl && (
+            <div className="rounded-lg overflow-hidden bg-gray-900 aspect-video">
+              <video
+                src={mediaBlobUrl}
+                controls
+                className="w-full h-full object-cover"
+              />
+            </div>
+          )}
+
+          {/* Controls */}
+          <div className="flex gap-4 justify-center flex-wrap">
+            {!isRecording && !mediaBlobUrl && !showPreview && (
+              <button
+                onClick={startPreview}
+                className="flex items-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                <Eye className="w-5 h-5" />
+                Preview Camera
+              </button>
+            )}
+
+            {showPreview && !isRecording && (
+              <button
+                onClick={stopPreview}
+                className="flex items-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                <EyeOff className="w-5 h-5" />
+                Stop Preview
+              </button>
+            )}
+
+            {!isRecording && !mediaBlobUrl && (
+              <button
+                onClick={handleStartRecording}
+                className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                <Disc className="w-5 h-5" />
+                Start Recording
+              </button>
+            )}
+
+            {isRecording && (
+              <button
+                onClick={handleStopRecording}
+                className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                <StopCircle className="w-5 h-5" />
+                Stop Recording
+              </button>
+            )}
+
+            {mediaBlobUrl && (
+              <button
+                onClick={handleNewRecording}
+                className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                <Camera className="w-5 h-5" />
+                New Recording
+              </button>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
-export default AudioRecorder;
+export default VideoRecorder;
