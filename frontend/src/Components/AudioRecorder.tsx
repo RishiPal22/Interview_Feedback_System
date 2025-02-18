@@ -3,6 +3,7 @@ import { supabase } from "@/Client";
 import { useReactMediaRecorder } from "react-media-recorder";
 import { Camera, StopCircle, Disc, Eye, EyeOff } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 interface VideoRecorderProps {
   username: string;
@@ -13,13 +14,14 @@ interface VideoRecorderProps {
 const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
   const videoPreviewRef = useRef<HTMLVideoElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
 
   const { startRecording, stopRecording, mediaBlobUrl, clearBlobUrl } = 
     useReactMediaRecorder({
       audio: true,
-      video: true,
+      // video: true,
       onStart: () => setIsRecording(true),
       onStop: () => setIsRecording(false)
     });
@@ -31,7 +33,7 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
           const response = await fetch(mediaBlobUrl);
           const blob = await response.blob();
           const randomNum = Math.floor(Math.random() * 10000);
-          const fileName = `${username}_${randomNum}.mp4`;
+          const fileName = `${username}_${randomNum}.mp3`;
           
           const { data, error } = await supabase.storage
             .from("videosstore")
@@ -47,6 +49,46 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
               email,
               video_url: videoUrl,
             });
+
+            // Fetch the file from Supabase and convert it to base64
+            const { data: fileData, error: fileError } = await supabase
+              .storage
+              .from("videosstore")
+              .download(videoUrl);
+
+            if (fileError) {
+              console.error("Error downloading video:", fileError.message);
+            } else {
+              const base64Buffer = await fileData.arrayBuffer();
+              const base64AudioFile = btoa(
+                new Uint8Array(base64Buffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+              );
+
+              // Initialize a Gemini model appropriate for your use case.
+              const apiKey = import.meta.env.VITE_API_KEY;
+              if (!apiKey) {
+                throw new Error('API_KEY is not defined in the environment variables');
+              }
+              const genAI = new GoogleGenerativeAI(apiKey);
+              const model = genAI.getGenerativeModel({
+                model: "gemini-2.0-flash",
+              });
+
+              // Generate content using a prompt and the metadata of the uploaded file.
+              const result = await model.generateContent([
+                {
+                  inlineData: {
+                    mimeType: "audio/mp3",
+                    data: base64AudioFile
+                  }
+                },
+                { text: "Please summarize the audio." },
+              ]);
+
+              // Print the response.
+              const responseText = await result.response.text();
+              setResult(responseText);
+            }
           }
         } catch (error) {
           console.error("Error processing video:", error);
@@ -95,6 +137,7 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
   const handleNewRecording = () => {
     clearBlobUrl();
     stopPreview();
+    setResult(null);
   };
 
   return (
@@ -134,6 +177,14 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
                 controls
                 className="w-full h-full object-cover"
               />
+            </div>
+          )}
+
+          {/* Display Result */}
+          {result && (
+            <div className="bg-gray-100 p-4 rounded-lg">
+              <h2 className="text-lg font-bold">Transcription Result:</h2>
+              <p>{result}</p>
             </div>
           )}
 
