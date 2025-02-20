@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/Client";
 import { useReactMediaRecorder } from "react-media-recorder";
 import { Camera, StopCircle, Disc, Eye, EyeOff } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 interface VideoRecorderProps {
   username: string;
@@ -15,15 +15,15 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+  const [relevancy, setRelevancy] = useState<number | null>(null);
   const videoPreviewRef = useRef<HTMLVideoElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
 
-  const { startRecording, stopRecording, mediaBlobUrl, clearBlobUrl } = 
+  const { startRecording, stopRecording, mediaBlobUrl, clearBlobUrl } =
     useReactMediaRecorder({
       audio: true,
-      // video: true,
       onStart: () => setIsRecording(true),
-      onStop: () => setIsRecording(false)
+      onStop: () => setIsRecording(false),
     });
 
   useEffect(() => {
@@ -34,11 +34,11 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
           const blob = await response.blob();
           const randomNum = Math.floor(Math.random() * 10000);
           const fileName = `${username}_${randomNum}.mp3`;
-          
+
           const { data, error } = await supabase.storage
             .from("videosstore")
             .upload(fileName, blob);
-            
+
           if (error) {
             console.error("Error uploading video:", error.message);
           } else {
@@ -50,9 +50,7 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
               video_url: videoUrl,
             });
 
-            // Fetch the file from Supabase and convert it to base64
-            const { data: fileData, error: fileError } = await supabase
-              .storage
+            const { data: fileData, error: fileError } = await supabase.storage
               .from("videosstore")
               .download(videoUrl);
 
@@ -61,33 +59,55 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
             } else {
               const base64Buffer = await fileData.arrayBuffer();
               const base64AudioFile = btoa(
-                new Uint8Array(base64Buffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+                new Uint8Array(base64Buffer).reduce(
+                  (data, byte) => data + String.fromCharCode(byte),
+                  ""
+                )
               );
 
-              // Initialize a Gemini model appropriate for your use case.
+              // Initialize Gemini AI
               const apiKey = import.meta.env.VITE_API_KEY;
               if (!apiKey) {
-                throw new Error('API_KEY is not defined in the environment variables');
+                throw new Error(
+                  "API_KEY is not defined in the environment variables"
+                );
               }
               const genAI = new GoogleGenerativeAI(apiKey);
               const model = genAI.getGenerativeModel({
                 model: "gemini-2.0-flash",
               });
 
-              // Generate content using a prompt and the metadata of the uploaded file.
+              // Define the user's question
+              const userQuestion = "What is the capital of France?";
+
+              // Generate content with the user's audio response
               const result = await model.generateContent([
                 {
                   inlineData: {
                     mimeType: "audio/mp3",
-                    data: base64AudioFile
-                  }
+                    data: base64AudioFile,
+                  },
                 },
-                { text: "Please summarize the audio." },
+                { text: `The user was asked: "${userQuestion}". Please transcribe and analyze their response.` },
               ]);
 
-              // Print the response.
+              // Process AI response
               const responseText = await result.response.text();
               setResult(responseText);
+
+              // Check relevancy
+              const expectedAnswer = "Paris";
+              let relevancyScore = 0;
+
+              if (responseText.includes(expectedAnswer)) {
+                relevancyScore = 100; // Correct answer
+              } else if (responseText.toLowerCase().includes("france")) {
+                relevancyScore = 50; // Partially relevant
+              } else {
+                relevancyScore = 0; // Completely irrelevant
+              }
+
+              setRelevancy(relevancyScore);
             }
           }
         } catch (error) {
@@ -100,9 +120,9 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
 
   const startPreview = async () => {
     try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-        video: true, 
-        audio: true 
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
       });
       if (videoPreviewRef.current) {
         videoPreviewRef.current.srcObject = mediaStream;
@@ -116,7 +136,7 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
 
   const stopPreview = () => {
     if (stream) {
-      stream.getTracks().forEach(track => track.stop());
+      stream.getTracks().forEach((track) => track.stop());
       setStream(null);
     }
     setShowPreview(false);
@@ -138,6 +158,7 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
     clearBlobUrl();
     stopPreview();
     setResult(null);
+    setRelevancy(null);
   };
 
   return (
@@ -160,23 +181,13 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
                 muted
                 className="w-full h-full object-cover"
               />
-              {isRecording && (
-                <div className="absolute top-4 right-4 flex items-center gap-2 bg-red-500 px-3 py-1 rounded-full text-white">
-                  <div className="w-3 h-3 rounded-full bg-white animate-pulse" />
-                  <span className="text-sm">Recording</span>
-                </div>
-              )}
             </div>
           )}
 
           {/* Recorded Video Playback */}
           {mediaBlobUrl && (
             <div className="rounded-lg overflow-hidden bg-gray-900 aspect-video">
-              <video
-                src={mediaBlobUrl}
-                controls
-                className="w-full h-full object-cover"
-              />
+              <video src={mediaBlobUrl} controls className="w-full h-full object-cover" />
             </div>
           )}
 
@@ -188,55 +199,31 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
             </div>
           )}
 
+          {/* Display Relevancy Percentage */}
+          {relevancy !== null && (
+            <div className="bg-gray-200 p-4 rounded-lg text-center">
+              <h2 className="text-lg font-bold">Relevancy Score:</h2>
+              <p className="text-xl font-semibold">{relevancy}%</p>
+            </div>
+          )}
+
           {/* Controls */}
           <div className="flex gap-4 justify-center flex-wrap">
             {!isRecording && !mediaBlobUrl && !showPreview && (
-              <button
-                onClick={startPreview}
-                className="flex items-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors"
-              >
-                <Eye className="w-5 h-5" />
-                Preview Camera
-              </button>
-            )}
-
-            {showPreview && !isRecording && (
-              <button
-                onClick={stopPreview}
-                className="flex items-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors"
-              >
-                <EyeOff className="w-5 h-5" />
-                Stop Preview
+              <button onClick={startPreview} className="bg-gray-500 text-white px-4 py-2 rounded-lg">
+                <Eye className="w-5 h-5" /> Preview Camera
               </button>
             )}
 
             {!isRecording && !mediaBlobUrl && (
-              <button
-                onClick={handleStartRecording}
-                className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
-              >
-                <Disc className="w-5 h-5" />
+              <button onClick={handleStartRecording} className="bg-blue-500 text-white px-4 py-2 rounded-lg">
                 Start Recording
               </button>
             )}
 
             {isRecording && (
-              <button
-                onClick={handleStopRecording}
-                className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors"
-              >
-                <StopCircle className="w-5 h-5" />
+              <button onClick={handleStopRecording} className="bg-red-500 text-white px-4 py-2 rounded-lg">
                 Stop Recording
-              </button>
-            )}
-
-            {mediaBlobUrl && (
-              <button
-                onClick={handleNewRecording}
-                className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors"
-              >
-                <Camera className="w-5 h-5" />
-                New Recording
               </button>
             )}
           </div>
