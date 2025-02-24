@@ -1,7 +1,8 @@
+
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/Client";
 import { useReactMediaRecorder } from "react-media-recorder";
-import { Camera, StopCircle, Disc, Eye, EyeOff } from "lucide-react";
+import { Camera, Eye } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
@@ -22,6 +23,7 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
   const { startRecording, stopRecording, mediaBlobUrl, clearBlobUrl } =
     useReactMediaRecorder({
       audio: true,
+      video: true,
       onStart: () => setIsRecording(true),
       onStop: () => setIsRecording(false),
     });
@@ -88,26 +90,38 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
                     data: base64AudioFile,
                   },
                 },
-                { text: `The user was asked: "${userQuestion}". Please transcribe and analyze their response.` },
+                { text: `The user was asked: "${userQuestion}". Please transcribe.` },
               ]);
 
               // Process AI response
               const responseText = await result.response.text();
+              console.log("AI Response:", responseText);
               setResult(responseText);
 
+              // Generate expected answer using the model
+              const expectedAnswerResult = await model.generateContent([
+                { text: `What is the capital of France?` },
+              ]);
+              const expectedAnswer = await expectedAnswerResult.response.text();
+              console.log("Expected Answer:", expectedAnswer);
+
               // Check relevancy
-              const expectedAnswer = "Paris";
-              let relevancyScore = 0;
+              // let relevancyScore = 0;
 
-              if (responseText.includes(expectedAnswer)) {
-                relevancyScore = 100; // Correct answer
-              } else if (responseText.toLowerCase().includes("france")) {
-                relevancyScore = 50; // Partially relevant
-              } else {
-                relevancyScore = 0; // Completely irrelevant
-              }
+              const similarityResult = await model.generateContent([
+                {
+                  text: `Compare the user's response and the expected answer. 
+                  Give a relevance score from 0 to 100%. 
+                  User response: "${responseText}". 
+                  Expected answer: "${expectedAnswer}". 
+                  Provide only the percentage as output.`,
+                },
+              ]);
+              
+              const relevancyScore = await similarityResult.response.text();
+              console.log("Relevancy Score:", relevancyScore);
 
-              setRelevancy(relevancyScore);
+              setRelevancy(parseFloat(relevancyScore));
             }
           }
         } catch (error) {
@@ -224,6 +238,15 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
             {isRecording && (
               <button onClick={handleStopRecording} className="bg-red-500 text-white px-4 py-2 rounded-lg">
                 Stop Recording
+              </button>
+            )}
+            {mediaBlobUrl && (
+              <button
+                onClick={handleNewRecording}
+                className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                <Camera className="w-5 h-5" />
+                New Recording
               </button>
             )}
           </div>
