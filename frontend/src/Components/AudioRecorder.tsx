@@ -100,7 +100,7 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
 
               // Generate expected answer using the model
               const expectedAnswerResult = await model.generateContent([
-                { text: `What is the capital of France?` },
+                { text: `What are functions in programming?` },
               ]);
               const expectedAnswer = await expectedAnswerResult.response.text();
               console.log("Expected Answer:", expectedAnswer);

@@ -1,4 +1,4 @@
-import {BrowserRouter, Routes, Route} from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './App.css'
 import SignIn from './pages/SignIn'
 import Signup from './pages/Signup'
@@ -6,28 +6,31 @@ import Home from './pages/Home'
 import { ErrorProvider } from './context/ErrorProvider'
 import Interview from './pages/Interview'
 import Navbar from './Components/Navbar'
+import Privateroute from './Components/Privateroute'
 
 function App() {
- 
-  
+
+
 
   return (
     <>
-    <ErrorProvider>
+      <ErrorProvider>
 
-      <BrowserRouter>  {/* Ensure routing works properly */}
-      <Navbar/>
+        <BrowserRouter>  {/* Ensure routing works properly */}
+          <Navbar />
 
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/signin" element={<SignIn />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/interview" element={<Interview />} />
-      </Routes>
-    </BrowserRouter>
-    </ErrorProvider>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/signin" element={<SignIn />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route element={<Privateroute />}>
+              <Route path="/interview" element={<Interview />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </ErrorProvider>
 
-      
+
 
     </>
   )

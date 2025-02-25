@@ -57,7 +57,7 @@ function SignIn() {
               <input value={formData.password}
                 className="border sm:w-80 w-48 bg-white border-gray-300 box-border p-2 shadow-md focus:ring-2 focus:ring-blue-400 focus:outline-none rounded-lg"
                 placeholder='password'
-                onChange={handleChange} type='text' id='password' />
+                onChange={handleChange} type='password' id='password' />
               <button className='bg-blue-500 sm:w-80 w-48 rounded-lg uppercase hover:opacity-95 p-1' type='submit'>Sign in</button>
               <p>Dont have an account? <Link to='/signup'><span className='text-blue-700'>SignUp</span></Link></p>
             </form>

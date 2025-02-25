@@ -21,7 +21,7 @@ const Navbar = () => {
   }
   fetchSession();
   }, []);
-
+  
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -38,7 +38,7 @@ const Navbar = () => {
         <Link to="/interview"><p>Interview</p></Link>
         <Link to="/history"><p>History</p></Link>
         {user ? (
-          <button onClick={handleSignOut}>Sign Out</button>
+          <button className="cursor-pointer" onClick={handleSignOut}>Sign Out</button>
         ) : (
           <Link to='/signin'><p>Sign In</p></Link>
         )}
