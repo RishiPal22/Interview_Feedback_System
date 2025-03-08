@@ -4,6 +4,7 @@ import { useReactMediaRecorder } from "react-media-recorder";
 import { Camera, Eye } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import VideoFrames from "./VideoFrames";
 
 interface VideoRecorderProps {
   username: string;
@@ -116,7 +117,7 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
                   Provide only the percentage as output.`,
                 },
               ]);
-              
+
               const relevancyScore = await similarityResult.response.text();
               console.log("Relevancy Score:", relevancyScore);
 
@@ -244,6 +245,8 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
                 Start Recording
               </button>
             )}
+
+            {mediaBlobUrl && <VideoFrames mediaBlobUrl={mediaBlobUrl} />}
 
             {isRecording && (
               <button onClick={handleStopRecording} className="bg-red-500 text-white px-4 py-2 rounded-lg">
