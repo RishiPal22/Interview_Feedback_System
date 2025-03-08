@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/Client";
 import { useReactMediaRecorder } from "react-media-recorder";
@@ -17,7 +16,7 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
   const [showPreview, setShowPreview] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [relevancy, setRelevancy] = useState<number | null>(null);
-  const videoPreviewRef = useRef<HTMLVideoElement>(null);
+  const videoPreviewRef = useRef<HTMLVideoElement | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
 
   const { startRecording, stopRecording, mediaBlobUrl, clearBlobUrl } =
@@ -35,7 +34,7 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
           const response = await fetch(mediaBlobUrl);
           const blob = await response.blob();
           const randomNum = Math.floor(Math.random() * 10000);
-          const fileName = `${username}_${randomNum}.mp3`;
+          const fileName = `${username}_${randomNum}.mp4`;
 
           const { data, error } = await supabase.storage
             .from("videosstore")
@@ -80,7 +79,7 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
               });
 
               // Define the user's question
-              const userQuestion = "What is the capital of France?";
+              const userQuestion = "What are functions in programming?";
 
               // Generate content with the user's audio response
               const result = await model.generateContent([
@@ -111,7 +110,7 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
               const similarityResult = await model.generateContent([
                 {
                   text: `Compare the user's response and the expected answer. 
-                  Give a relevance score from 0 to 100%. 
+                  Give a relevance score from 0 to 100%. And please check it logically.
                   User response: "${responseText}". 
                   Expected answer: "${expectedAnswer}". 
                   Provide only the percentage as output.`,
@@ -138,11 +137,16 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
         video: true,
         audio: true,
       });
+      console.log("MediaStream received:", mediaStream); // Debugging log
+      console.log("Video Preview Ref:", videoPreviewRef.current); // Debugging log
+
       if (videoPreviewRef.current) {
         videoPreviewRef.current.srcObject = mediaStream;
+        videoPreviewRef.current.play();
         setStream(mediaStream);
       }
       setShowPreview(true);
+      // stopPreview();
     } catch (err) {
       console.error("Error accessing camera:", err);
     }
@@ -174,6 +178,12 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
     setResult(null);
     setRelevancy(null);
   };
+
+  useEffect(() => {
+    if (showPreview) {
+      startPreview();
+    }
+  }, [showPreview]);
 
   return (
     <Card className="w-full max-w-2xl mx-auto">
