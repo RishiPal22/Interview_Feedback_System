@@ -2,12 +2,21 @@ import cv2
 import random
 import os
 from supabase import create_client
-from fastapi import FastAPI
+from fastapi import FastAPI, Body
 from dotenv import load_dotenv
+from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # Ensure this is correctly set
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Supabase Setup
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -51,17 +60,66 @@ def upload_frames_to_supabase(frames):
         os.remove(frame)  # Cleanup local file
     return frame_urls
 
+# @app.post("/process-video")
+# async def process_video(data: dict = Body(...)):
+#     print("Received request:", data)
+
+#     video_url = data.get("video_url")
+#     if not video_url:
+#         return {"error": "Missing video_url"}
+
+#     try:
+#         # Download video from Supabase
+#         video_data = supabase.storage.from_("videosstore").download(video_url)
+#         with open("temp_video.mp4", "wb") as f:
+#             f.write(video_data)
+
+#         # Extract frames (2 per 10 seconds)
+#         frames = extract_random_frames("temp_video.mp4")
+
+#         # Upload frames to Supabase & get URLs
+#         frame_urls = upload_frames_to_supabase(frames)
+
+#         return {"frames": frame_urls}
+#     except Exception as e:
+#         print(f"Error processing video: {e}")
+#         return {"error": str(e)}
+
 @app.post("/process-video")
-async def process_video(video_url: str):
-    # Download video from Supabase
-    video_data = supabase.storage.from_("videosstore").download(video_url)
-    with open("temp_video.mp4", "wb") as f:
-        f.write(video_data)
+async def process_video(data: dict = Body(...)):
+    print("Received request:", data)
 
-    # Extract frames (2 per 10 seconds)
-    frames = extract_random_frames("temp_video.mp4")
+    video_filename = data.get("video_url")  # Ensure it's just the filename
+    if not video_filename:
+        return {"error": "Missing video_url"}
 
-    # Upload frames to Supabase & get URLs
-    frame_urls = upload_frames_to_supabase(frames)
+    # Construct the full path expected by Supabase
+    full_video_path = f"videosstore/{video_filename}"
+    print(f"Attempting to download: {full_video_path}")
 
-    return {"frames": frame_urls}
+    try:
+        # Check if video exists in Supabase
+        video_files = supabase.storage.from_("videosstore").list()
+        available_files = [file["name"] for file in video_files]
+        print("Available files in Supabase:", available_files)
+
+        if video_filename not in available_files:
+            return {"error": "Video not found in Supabase"}
+
+        # Download video from Supabase
+        video_data = supabase.storage.from_("videosstore").download(full_video_path)
+        with open("temp_video.mp4", "wb") as f:
+            f.write(video_data)
+
+        # Extract frames (2 per 10 seconds)
+        frames = extract_random_frames("temp_video.mp4")
+
+        # Upload frames to Supabase & get URLs
+        frame_urls = upload_frames_to_supabase(frames)
+
+        return {"frames": frame_urls}
+
+    except Exception as e:
+        print(f"Error processing video: {e}")
+        return {"error": str(e)}
+

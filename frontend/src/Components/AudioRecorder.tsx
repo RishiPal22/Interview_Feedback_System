@@ -246,6 +246,7 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
               </button>
             )}
 
+            {/* Frames getting displayed which are extracted. */}
             {mediaBlobUrl && <VideoFrames mediaBlobUrl={mediaBlobUrl} />}
 
             {isRecording && (
