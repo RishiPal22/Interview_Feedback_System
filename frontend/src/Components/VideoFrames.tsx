@@ -1,107 +1,75 @@
-// import { useEffect, useRef, useState } from "react";
-
-// interface VideoFramesProps {
-//   mediaBlobUrl: string | null;
-// }
-
-// const VideoFrames = ({ mediaBlobUrl }: VideoFramesProps) => {
-//   const videoRef = useRef<HTMLVideoElement | null>(null);
-//   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-//   const [extractedFrames, setExtractedFrames] = useState<string[]>([]);
-
-//   useEffect(() => {
-//     if (mediaBlobUrl && videoRef.current && canvasRef.current) {
-//       const video = videoRef.current;
-//       video.src = mediaBlobUrl;
-//       video.play();
-
-//       const canvas = canvasRef.current;
-//       const context = canvas.getContext("2d");
-
-//       const extractFrames = () => {
-//         if (!video.duration) return;
-
-//         // Generate two unique random times within the current 10-second window
-//         const time1 = Math.random() * Math.min(10, video.duration - 1);
-//         let time2;
-
-//         do {
-//           time2 = Math.random() * Math.min(10, video.duration - 1);
-//         } while (Math.abs(time1 - time2) < 0.5); // Ensure frames are at least 0.5s apart
-
-//         // Clear previous frames before extracting new ones
-//         setExtractedFrames([]);
-
-//         [time1, time2].forEach((time) => {
-//           setTimeout(() => {
-//             video.currentTime = time;
-//             video.onseeked = () => {
-//               if (context) {
-//                 context.drawImage(video, 0, 0, canvas.width, canvas.height);
-//                 const frameData = canvas.toDataURL("image/png");
-
-//                 setExtractedFrames((prevFrames) => {
-//                   if (prevFrames.length < 2) {
-//                     return [...prevFrames, frameData]; // Ensure only two frames are stored
-//                   }
-//                   return prevFrames;
-//                 });
-//               }
-//             };
-//           }, time * 1000);
-//         });
-//       };
-
-//       const interval = setInterval(extractFrames, 10000);
-
-//       return () => clearInterval(interval);
-//     }
-//   }, [mediaBlobUrl]);
-
-//   return (
-//     <div>
-//       <video ref={videoRef} className="hidden" />
-//       <canvas ref={canvasRef} width={640} height={360} className="hidden" />
-//       <div className="grid grid-cols-2 gap-2 mt-4">
-//         {extractedFrames.map((frame, index) => (
-//           <img key={index} src={frame} alt={`Extracted Frame ${index}`} className="rounded-lg shadow" />
-//         ))}
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default VideoFrames;
-
-
 import { useEffect, useState } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+const FASTAPI_URL = "http://127.0.0.1:8000/process-video"; 
 
 interface VideoFramesProps {
-  mediaBlobUrl: string | null;
+  userId: string; // The ID of the logged-in user
+  recordingStopped: boolean; // New prop to indicate if recording has stopped
 }
 
-const VideoFrames = ({ mediaBlobUrl }: VideoFramesProps) => {
+const VideoFrames = ({ userId, recordingStopped }: VideoFramesProps) => {
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [extractedFrames, setExtractedFrames] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const FASTAPI_URL = "http://127.0.0.1:8000/process-video"; // Change if deployed
+
+  useEffect(() => {
+    const fetchVideoUrl = async () => {
+      if (!userId) return;
+
+      const { data, error } = await supabase
+        .from("videos")
+        .select("video_url")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(1); // Ensure only one row is returned
+
+      if (error) {
+        console.error("Error fetching video URL:", error.message);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        setVideoUrl(data[0].video_url);
+      } else {
+        console.error("No video URL found for the user.");
+      }
+    };
+
+    fetchVideoUrl();
+
+    // **Subscribe to changes in the "videos" table**
+    const subscription = supabase
+      .channel("video_updates")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "videos", filter: `user_id=eq.${userId}` },
+        (payload) => {
+          console.log("New video added:", payload);
+          fetchVideoUrl(); // Fetch the new video URL when a new video is uploaded
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [userId]); // ✅ Runs when `userId` changes
 
   useEffect(() => {
     const fetchFrames = async () => {
-      if (!mediaBlobUrl) return;
+      if (!videoUrl || !recordingStopped) return; // Fetch frames only if recording has stopped
       setLoading(true);
-      
-      try {
-        // Extract file name from URL
-        const videoFileName = mediaBlobUrl.split("/").pop();
-        console.log(videoFileName);
-        // const videoFileName = 'https://ezxqwbvzmieuieumdkca.supabase.co/storage/v1/object/public/videosstore//RishiPal23_6575.mp4'
-        ;
 
-        // Send request to FastAPI
+      try {
         const response = await fetch(FASTAPI_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ video_url: videoFileName }),
+          body: JSON.stringify({ video_url: videoUrl }),
         });
 
         if (!response.ok) {
@@ -109,7 +77,8 @@ const VideoFrames = ({ mediaBlobUrl }: VideoFramesProps) => {
         }
 
         const data = await response.json();
-        setExtractedFrames(data.frames); // Store frame URLs from API response
+        setExtractedFrames(data.frames);
+        console.log("Extracted frames:", data);
       } catch (error) {
         console.error("Error fetching frames:", error);
       } finally {
@@ -118,25 +87,24 @@ const VideoFrames = ({ mediaBlobUrl }: VideoFramesProps) => {
     };
 
     fetchFrames();
-  }, [mediaBlobUrl]);
+  }, [videoUrl, recordingStopped]); // ✅ Runs whenever `videoUrl` or `recordingStopped` updates
 
   return (
     <div>
-      {loading ? <p>Processing video and extracting frames...</p> : null}
-
-      <div className="grid grid-cols-2 gap-2 mt-4">
-        {extractedFrames && extractedFrames.map((frame, index) => (
-          <img
-            key={index}
-            src={frame}
-            alt={`Extracted Frame ${index}`}
-            className="rounded-lg shadow"
-          />
-        ))}
-      </div>
+      {loading && <p>Processing video...</p>}
+      {extractedFrames.length > 0 ? (
+        <div className="grid grid-cols-2 gap-2 mt-4">
+          {extractedFrames.map((frame, index) => (
+            <img key={index} src={frame} alt={`Frame ${index}`} className="rounded-lg shadow" />
+          ))}
+        </div>
+      ) : (
+        <p>No frames extracted yet.</p>
+      )}
     </div>
   );
 };
 
 export default VideoFrames;
+
 

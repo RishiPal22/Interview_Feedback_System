@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { GoogleGenerativeAI } from "@google/generative-ai"; // Adjust the import path as needed
 import { supabase } from "@/Client";
 import { useReactMediaRecorder } from "react-media-recorder";
 import { Camera, Eye } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import VideoFrames from "./VideoFrames";
 
 interface VideoRecorderProps {
@@ -17,15 +17,20 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
   const [showPreview, setShowPreview] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [relevancy, setRelevancy] = useState<number | null>(null);
+  const [recordingStopped, setRecordingStopped] = useState(false); // New state variable
   const videoPreviewRef = useRef<HTMLVideoElement | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [debounceTimeout, setDebounceTimeout] = useState<NodeJS.Timeout | null>(null); // New state variable
 
   const { startRecording, stopRecording, mediaBlobUrl, clearBlobUrl } =
     useReactMediaRecorder({
       audio: true,
       video: true,
       onStart: () => setIsRecording(true),
-      onStop: () => setIsRecording(false),
+      onStop: () => {
+        setIsRecording(false);
+        setRecordingStopped(true); // Set recordingStopped to true when recording stops
+      },
     });
 
   useEffect(() => {
@@ -171,6 +176,15 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
   const handleStopRecording = () => {
     stopRecording();
     stopPreview();
+
+    // Add debounce to delay frame extraction
+    if (debounceTimeout) {
+      clearTimeout(debounceTimeout);
+    }
+    const timeout = setTimeout(() => {
+      setRecordingStopped(true);
+    }, 5000); // Adjust the delay as needed
+    setDebounceTimeout(timeout);
   };
 
   const handleNewRecording = () => {
@@ -178,6 +192,7 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
     stopPreview();
     setResult(null);
     setRelevancy(null);
+    setRecordingStopped(false); // Reset recordingStopped when starting a new recording
   };
 
   useEffect(() => {
@@ -247,7 +262,7 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
             )}
 
             {/* Frames getting displayed which are extracted. */}
-            {mediaBlobUrl && <VideoFrames mediaBlobUrl={mediaBlobUrl} />}
+            {userId && recordingStopped && <VideoFrames userId={userId} recordingStopped={recordingStopped} />} {/* Pass recordingStopped */}
 
             {isRecording && (
               <button onClick={handleStopRecording} className="bg-red-500 text-white px-4 py-2 rounded-lg">
