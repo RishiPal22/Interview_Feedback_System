@@ -8,3 +8,4 @@ supabase
 dotenv
 fastapi-cors
 imageio[ffmpeg]
+deepface
