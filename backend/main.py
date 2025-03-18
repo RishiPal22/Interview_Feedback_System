@@ -1,136 +1,13 @@
-# import cv2
-# import random
-# import os
-# import base64
-# from supabase import create_client
-# from fastapi import FastAPI, Body
-# from dotenv import load_dotenv
-# from fastapi.middleware.cors import CORSMiddleware
 
-# # Load environment variables
-# load_dotenv()
-
-# # Initialize FastAPI
-# app = FastAPI()
-
-# # CORS settings
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=["http://localhost:5173"],  # Update with frontend URL if deployed
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )
-
-# # Supabase Setup
-# SUPABASE_URL = os.getenv("SUPABASE_URL")
-# SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-# supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-# def extract_random_frames(video_path, num_frames=2, interval=5):
-#     cap = cv2.VideoCapture(video_path)
-    
-#     if not cap.isOpened():
-#         print(f"Error: Unable to open video {video_path}")
-#         return []
-
-#     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-#     fps = int(cap.get(cv2.CAP_PROP_FPS))
-
-#     print("total frames", total_frames)
-#     print(fps)
-
-#     if fps == 0 or total_frames == 0:
-#         print("Error: FPS or total frames is zero, invalid video")
-#         cap.release()
-#         return []
-
-#     duration = total_frames // fps
-
-#     print("duration is ", duration)
-#     extracted_frames = []
-
-#     for sec in range(0, duration, interval):
-#         for _ in range(num_frames):
-#             random_frame = random.randint(sec * fps, min((sec + interval) * fps - 1, total_frames - 1))
-#             cap.set(cv2.CAP_PROP_POS_FRAMES, random_frame)
-#             ret, frame = cap.read()
-#             if ret:
-#                 _, buffer = cv2.imencode(".jpg", frame)
-#                 frame_base64 = base64.b64encode(buffer).decode("utf-8")
-#                 extracted_frames.append(f"data:image/jpeg;base64,{frame_base64}")
-#             else:
-#                 print(f"Warning: Failed to read frame {random_frame}")
-
-#     cap.release()
-#     return extracted_frames
-
-# @app.post("/process-video")
-# async def process_video(data: dict = Body(...)):
-#     print("Received request:", data)
-
-#     video_filename = data.get("video_url")  # Ensure it's just the filename
-#     if not video_filename:
-#         return {"error": "Missing video_url"}
-
-#     # Ensure file extension
-#     if not video_filename.lower().endswith((".mp4", ".avi", ".mov", ".mkv")):
-#         return {"error": "Unsupported video format"}
-
-#     full_video_path = f"temp_{video_filename}"  # Save as temp file
-
-#     try:
-#         # Check if video exists in Supabase
-#         video_files = supabase.storage.from_("videosstore").list()
-#         available_files = [file["name"] for file in video_files]
-#         print("Available files in Supabase:", available_files)
-
-#         if video_filename not in available_files:
-#             return {"error": "Video not found in Supabase"}
-
-#         # Download video from Supabase
-#         video_data = supabase.storage.from_("videosstore").download(video_filename)
-        
-#         with open(full_video_path, "wb") as f:
-#             f.write(video_data)
-        
-#         print(f"Downloaded video saved as {full_video_path}")
-
-#         # Debug: Check if OpenCV can open the video
-#         cap = cv2.VideoCapture(full_video_path)
-#         if not cap.isOpened():
-#             print("Error: OpenCV cannot open the downloaded video")
-#             return {"error": "Invalid video format or corrupted file"}
-#         cap.release()
-
-#         # Extract frames (2 per 5 seconds)
-#         frames = extract_random_frames('https://ezxqwbvzmieuieumdkca.supabase.co/storage/v1/object/public/videosstore//RishiPal23_4606.mp4', num_frames=2, interval=5)
-#         print("Extracted frames:", len(frames))
-        
-#         # Cleanup
-#         os.remove(full_video_path)
-        
-#         return {"frames": frames if frames else "No frames extracted"}
-
-#     except Exception as e:
-#         print(f"Error processing video: {e}")
-#         return {"error": str(e)}
-
-
-
-import cv2
+import os
 import random
 import base64
-import os
-import numpy as np
 import requests
-from supabase import create_client
+import imageio
+import io
+import tempfile
 from fastapi import FastAPI, Body
-from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
-
-# Load environment variables
-load_dotenv()
 
 # Initialize FastAPI
 app = FastAPI()
@@ -138,55 +15,90 @@ app = FastAPI()
 # CORS settings
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Update with frontend URL if deployed
+    allow_origins=["http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Supabase Setup
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-
 def extract_random_frames_from_url(video_url, num_frames=2, interval=5):
     try:
-        # Fetch video as a byte stream
+        # Fetch video from URL
         response = requests.get(video_url, stream=True)
         if response.status_code != 200:
-            return {"error": "Failed to fetch video from URL"}
+            return {"error": "Failed to fetch video from Supabase"}
 
-        # Convert byte stream to a NumPy array
-        video_bytes = np.asarray(bytearray(response.content), dtype=np.uint8)
-        video = cv2.imdecode(video_bytes, cv2.IMREAD_UNCHANGED)
+        # Define a custom temporary directory
+        custom_temp_dir = "C:\\Temp"  # Change this to a valid directory on your system
+        temp_dir = None
 
-        # Open the video stream in OpenCV
-        cap = cv2.VideoCapture(video_url)
+        # Try to use the custom temporary directory
+        try:
+            if not os.path.exists(custom_temp_dir):
+                os.makedirs(custom_temp_dir)  # Create the directory if it doesn't exist
+            temp_dir = custom_temp_dir
+        except Exception as e:
+            print(f"Failed to create custom temp directory: {e}. Falling back to system default temp directory.")
+            temp_dir = tempfile.gettempdir()  # Fallback to system default temp directory
 
-        if not cap.isOpened():
-            return {"error": "Cannot open video stream"}
+        print("Using temporary directory:", temp_dir)
 
-        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        fps = int(cap.get(cv2.CAP_PROP_FPS))
+        # Save video to a temporary file in the specified directory
+        with tempfile.NamedTemporaryFile(dir=temp_dir, delete=False, suffix=".mp4") as temp_video:
+            temp_video.write(response.content)
+            temp_video_path = temp_video.name
+        
+        print("Temporary video file saved at:", temp_video_path)
 
-        if fps == 0 or total_frames == 0:
-            cap.release()
-            return {"error": "Invalid video (FPS or total frames is zero)"}
+        # Read video using imageio from the saved file
+        video_reader = imageio.get_reader(temp_video_path)
 
-        duration = total_frames // fps
+        # Extract metadata
+        metadata = video_reader.get_meta_data()
+        print("Metadata:", metadata)
+
+        # Get FPS from metadata (default to 30 if missing)
+        fps = int(metadata.get("fps", 30))
+        print("FPS:", fps)
+
+        # Calculate total frames and duration manually
+        try:
+            total_frames = video_reader.count_frames()  # Get total frames in the video
+            duration = int(total_frames / fps)  # Calculate duration using total frames and FPS
+        except Exception as e:
+            print(f"Error calculating total frames or duration: {e}")
+            return {"error": "Unable to calculate video duration or total frames"}
+
+        print("Total frames:", total_frames)
+        print("Duration:", duration)
+        
+        if duration <= 0 or fps <= 0:
+            video_reader.close()
+ 
+            return {"error": "Invalid video metadata (duration or FPS missing or zero)"}
+
         extracted_frames = []
 
-        for sec in range(0, duration, interval):
+        # Extract frames at intervals
+        for sec in range(0, int(duration), interval):
             for _ in range(num_frames):
                 random_frame = random.randint(sec * fps, min((sec + interval) * fps - 1, total_frames - 1))
-                cap.set(cv2.CAP_PROP_POS_FRAMES, random_frame)
-                ret, frame = cap.read()
-                if ret:
-                    _, buffer = cv2.imencode(".jpg", frame)
-                    frame_base64 = base64.b64encode(buffer).decode("utf-8")
+                frame = video_reader.get_data(random_frame)
+                
+                if frame is not None:
+                    buffer = io.BytesIO()
+                    imageio.imwrite(buffer, frame, format="jpg")
+                    buffer.seek(0)
+                    frame_base64 = base64.b64encode(buffer.read()).decode("utf-8")
                     extracted_frames.append(f"data:image/jpeg;base64,{frame_base64}")
 
-        cap.release()
+        video_reader.close()
+
+
+        # Remove temporary file
+        os.remove(temp_video_path)
+        print("Temporary file deleted:", temp_video_path)
+
         return extracted_frames if extracted_frames else {"error": "No frames extracted"}
 
     except Exception as e:
@@ -194,13 +106,9 @@ def extract_random_frames_from_url(video_url, num_frames=2, interval=5):
 
 @app.post("/process-video")
 async def process_video(data: dict = Body(...)):
-    print("Received request:", data)
-
-    video_url = data.get("video_url")  # Ensure it's a valid URL
+    video_url = data.get("video_url")
     if not video_url:
         return {"error": "Missing video_url"}
 
-    # Extract frames without saving the video
     frames = extract_random_frames_from_url(video_url, num_frames=2, interval=5)
-    
     return {"frames": frames}

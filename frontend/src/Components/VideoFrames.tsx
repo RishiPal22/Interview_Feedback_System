@@ -5,11 +5,11 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const FASTAPI_URL = "http://127.0.0.1:8000/process-video"; 
+const FASTAPI_URL = "http://127.0.0.1:8000/process-video";
 
 interface VideoFramesProps {
-  userId: string; // The ID of the logged-in user
-  recordingStopped: boolean; // New prop to indicate if recording has stopped
+  userId: string;
+  recordingStopped: boolean;
 }
 
 const VideoFrames = ({ userId, recordingStopped }: VideoFramesProps) => {
@@ -26,15 +26,19 @@ const VideoFrames = ({ userId, recordingStopped }: VideoFramesProps) => {
         .select("video_url")
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
-        .limit(1); // Ensure only one row is returned
+        .limit(1)
+        .single(); // Fetch only one record
 
       if (error) {
         console.error("Error fetching video URL:", error.message);
         return;
       }
 
-      if (data && data.length > 0) {
-        setVideoUrl(data[0].video_url);
+      if (data && data.video_url) {
+        // Construct the full Supabase storage URL
+        const fullVideoUrl = `https://ezxqwbvzmieuieumdkca.supabase.co/storage/v1/object/public/videosstore/${data.video_url}`;
+        setVideoUrl(fullVideoUrl);
+        console.log("Video URL fetched:", fullVideoUrl);
       } else {
         console.error("No video URL found for the user.");
       }
@@ -42,7 +46,6 @@ const VideoFrames = ({ userId, recordingStopped }: VideoFramesProps) => {
 
     fetchVideoUrl();
 
-    // **Subscribe to changes in the "videos" table**
     const subscription = supabase
       .channel("video_updates")
       .on(
@@ -50,7 +53,7 @@ const VideoFrames = ({ userId, recordingStopped }: VideoFramesProps) => {
         { event: "INSERT", schema: "public", table: "videos", filter: `user_id=eq.${userId}` },
         (payload) => {
           console.log("New video added:", payload);
-          fetchVideoUrl(); // Fetch the new video URL when a new video is uploaded
+          fetchVideoUrl();
         }
       )
       .subscribe();
@@ -58,11 +61,11 @@ const VideoFrames = ({ userId, recordingStopped }: VideoFramesProps) => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [userId]); // ✅ Runs when `userId` changes
+  }, [userId]);
 
   useEffect(() => {
     const fetchFrames = async () => {
-      if (!videoUrl || !recordingStopped) return; // Fetch frames only if recording has stopped
+      if (!videoUrl || !recordingStopped) return;
       setLoading(true);
 
       try {
@@ -87,12 +90,12 @@ const VideoFrames = ({ userId, recordingStopped }: VideoFramesProps) => {
     };
 
     fetchFrames();
-  }, [videoUrl, recordingStopped]); // ✅ Runs whenever `videoUrl` or `recordingStopped` updates
+  }, [videoUrl, recordingStopped]);
 
   return (
     <div>
       {loading && <p>Processing video...</p>}
-      {extractedFrames.length > 0 ? (
+       {extractedFrames.length > 0 ? (
         <div className="grid grid-cols-2 gap-2 mt-4">
           {extractedFrames.map((frame, index) => (
             <img key={index} src={frame} alt={`Frame ${index}`} className="rounded-lg shadow" />
@@ -100,7 +103,7 @@ const VideoFrames = ({ userId, recordingStopped }: VideoFramesProps) => {
         </div>
       ) : (
         <p>No frames extracted yet.</p>
-      )}
+      )} 
     </div>
   );
 };
