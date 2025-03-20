@@ -100,7 +100,7 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
 
               // Process AI response
               const responseText = await result.response.text();
-              console.log("AI Response:", responseText);
+              // console.log("AI Response:", responseText);
               setResult(responseText);
 
               // Generate expected answer using the model
@@ -108,7 +108,7 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
                 { text: `What are functions in programming?` },
               ]);
               const expectedAnswer = await expectedAnswerResult.response.text();
-              console.log("Expected Answer:", expectedAnswer);
+              // console.log("Expected Answer:", expectedAnswer);
 
               // Check relevancy
               // let relevancyScore = 0;
