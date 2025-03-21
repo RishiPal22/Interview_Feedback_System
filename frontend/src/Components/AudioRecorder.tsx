@@ -205,8 +205,8 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Camera className="w-6 h-6" />
-          <span>Video Recorder</span>
+          <Camera className="w-6 h-6  text-purple-400" />
+          <span className="text-white">Video Recorder</span>
         </CardTitle>
       </CardHeader>
       <CardContent>
