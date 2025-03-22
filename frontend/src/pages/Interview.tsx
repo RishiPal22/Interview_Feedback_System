@@ -4,7 +4,8 @@ import { useEffect, useState } from "react"
 import { supabase } from "../Client"
 import AudioRecorder from "../Components/AudioRecorder"
 import { User, Mail, Loader2 } from "lucide-react"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/Components/ui/card"
+// import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/Components/ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../Components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "../Components/ui/avatar"
 import { Button } from "../Components/ui/button"
 import { Separator } from "../Components/ui/separator"
@@ -129,13 +130,7 @@ function Interview() {
 
         <Separator className="my-10 bg-[#333]" />
 
-        <div className="text-center">
-          <div className="inline-block bg-[#252525] px-6 py-3 rounded-full">
-            <p className="text-sm text-purple-300">
-              Need help? Contact our support team at <span className="text-purple-400">support@example.com</span>
-            </p>
-          </div>
-        </div>
+       
       </div>
     </div>
   )
