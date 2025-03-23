@@ -62,6 +62,10 @@ const VideoRecorder = ({ username, email, userId, interviewQuestion }: VideoReco
               .from("videosstore")
               .download(videoUrl);
 
+              setTimeout(() => {
+                setRecordingStopped(true);
+              }, 2000);
+
             if (fileError) {
               console.error("Error downloading video:", fileError.message);
             } else {

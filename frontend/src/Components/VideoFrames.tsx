@@ -21,47 +21,35 @@ const VideoFrames = ({ userId, recordingStopped }: VideoFramesProps) => {
     const fetchVideoUrl = async () => {
       if (!userId) return;
 
-      const { data, error } = await supabase
-        .from("videos")
-        .select("video_url")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single(); // Fetch only one record
+      // 🟢 Delay fetching to ensure the new video is available in Supabase
+      setTimeout(async () => {
+        const { data, error } = await supabase
+          .from("videos")
+          .select("video_url")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false }) // Get the latest video
+          .limit(1)
+          .single(); 
 
-      if (error) {
-        console.error("Error fetching video URL:", error.message);
-        return;
-      }
-
-      if (data && data.video_url) {
-        // Construct the full Supabase storage URL
-        const fullVideoUrl = `https://ezxqwbvzmieuieumdkca.supabase.co/storage/v1/object/public/videosstore/${data.video_url}`;
-        setVideoUrl(fullVideoUrl);
-        console.log("Video URL fetched:", fullVideoUrl);
-      } else {
-        console.error("No video URL found for the user.");
-      }
-    };
-
-    fetchVideoUrl();
-
-    const subscription = supabase
-      .channel("video_updates")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "videos", filter: `user_id=eq.${userId}` },
-        (payload) => {
-          console.log("New video added:", payload);
-          fetchVideoUrl();
+        if (error) {
+          console.error("Error fetching video URL:", error.message);
+          return;
         }
-      )
-      .subscribe();
 
-    return () => {
-      subscription.unsubscribe();
+        if (data && data.video_url) {
+          const fullVideoUrl = `https://ezxqwbvzmieuieumdkca.supabase.co/storage/v1/object/public/videosstore/${data.video_url}`;
+          setVideoUrl(fullVideoUrl);
+          console.log("New Video URL fetched:", fullVideoUrl);
+        } else {
+          console.error("No video URL found for the user.");
+        }
+      }, 2000); // ✅ Delay by 2 seconds
     };
-  }, [userId]);
+
+    if (recordingStopped) {
+      fetchVideoUrl();
+    }
+  }, [userId, recordingStopped]); // ✅ Fetch only when recording stops
 
   useEffect(() => {
     const fetchFrames = async () => {
@@ -109,5 +97,6 @@ const VideoFrames = ({ userId, recordingStopped }: VideoFramesProps) => {
 };
 
 export default VideoFrames;
+
 
 
