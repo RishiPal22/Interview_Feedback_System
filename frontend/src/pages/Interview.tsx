@@ -1,46 +1,81 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { supabase } from "../Client"
-import AudioRecorder from "../Components/AudioRecorder"
-import { User, Mail, Loader2 } from "lucide-react"
-// import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/Components/ui/card"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../Components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "../Components/ui/avatar"
-import { Button } from "../Components/ui/button"
-import { Separator } from "../Components/ui/separator"
+import { useEffect, useState } from "react";
+import { supabase } from "../Client";
+import AudioRecorder from "../Components/AudioRecorder";
+import { User, Mail, Loader2, MessageSquare } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../Components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "../Components/ui/avatar";
+import { Button } from "../Components/ui/button";
+import { Separator } from "../Components/ui/separator";
 
 function Interview() {
-  const [userData, setUserData] = useState({ username: "", email: "", userId: "" })
-  const [loading, setLoading] = useState(true)
+  const [userData, setUserData] = useState({ username: "", email: "", userId: "" });
+  const [loading, setLoading] = useState(true);
+  const [question, setQuestion] = useState("");
+  const [showQuestion, setShowQuestion] = useState(false);
+  const [availableQuestions, setAvailableQuestions] = useState<string[]>([]);
 
   useEffect(() => {
     async function fetchUser() {
-      setLoading(true)
+      setLoading(true);
       try {
         const {
           data: { session },
-        } = await supabase.auth.getSession()
+        } = await supabase.auth.getSession();
         if (session) {
-          const { user } = session
+          const { user } = session;
           setUserData({
             username: user.user_metadata.username || "",
             email: user.email || "",
             userId: user.id || "",
-          })
+          });
         }
       } catch (error) {
-        console.error("Error fetching user data:", error)
+        console.error("Error fetching user data:", error);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
-    fetchUser()
-  }, [])
+    fetchUser();
+  }, []);
+
+  useEffect(() => {
+    async function fetchQuestions() {
+      try {
+        const response = await fetch("/questions.json");
+        const data = await response.json();
+        setAvailableQuestions(data.map((q: { question: string }) => q.question));
+      } catch (error) {
+        console.error("Error fetching questions:", error);
+      }
+    }
+    fetchQuestions();
+  }, []);
+
+  const getNextQuestion = () => {
+    if (availableQuestions.length === 0) {
+      setQuestion("No more questions available.");
+      return;
+    }
+
+    const randomIndex = Math.floor(Math.random() * availableQuestions.length);
+    const nextQuestion = availableQuestions[randomIndex];
+
+    // Remove the selected question from available questions
+    setAvailableQuestions(availableQuestions.filter((_, i) => i !== randomIndex));
+    setQuestion(nextQuestion);
+  };
 
   const getInitials = (name: string): string => {
-    return name ? name.charAt(0).toUpperCase() : "U"
-  }
+    return name ? name.charAt(0).toUpperCase() : "U";
+  };
 
   return (
     <div className="bg-[#121212] min-h-screen text-white">
@@ -50,7 +85,7 @@ function Interview() {
             <h1 className="text-4xl font-bold mb-3">Interview Session</h1>
           </div>
           <p className="text-purple-200 text-center max-w-md opacity-80">
-            Record your interview responses with our professional audio recording tool
+            Record your interview responses with our professional audio recording tool.
           </p>
         </div>
 
@@ -96,45 +131,60 @@ function Interview() {
             {/* Audio Recorder Card */}
             <Card className="bg-[#1E1E1E] border-[#333] shadow-xl overflow-hidden">
               <CardContent className="p-6">
-                {userData.username ? (
-                  <div className="bg-[#252525] p-5 rounded-lg">
-                    <AudioRecorder username={userData.username} email={userData.email} userId={userData.userId} />
+                <div className="flex flex-col items-center">
+                  {/* Buttons Container */}
+                  <div className="flex gap-4">
+                    <Button
+                      onClick={() => {
+                        if (!showQuestion && question === "") getNextQuestion(); // Only fetch a new question if it's empty
+                        setShowQuestion(!showQuestion);
+                      }}
+                      className="bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 text-white px-6 py-2 rounded-lg shadow-lg flex items-center gap-2"
+                    >
+                      <MessageSquare className="h-5 w-5" />
+                      {showQuestion ? "Hide Question" : "Show Question"}
+                    </Button>
+
+                    {showQuestion && (
+                      <Button
+                        onClick={getNextQuestion}
+                        className="bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 text-white px-6 py-2 rounded-lg shadow-lg flex items-center gap-2"
+                      >
+                        <MessageSquare className="h-5 w-5" />
+                        Next Question
+                      </Button>
+                    )}
                   </div>
-                ) : (
-                  <div className="text-center py-12 bg-[#252525] rounded-lg">
-                    <p className="text-purple-200 mb-4">Please complete your profile to access the recorder</p>
-                    <Button className="bg-purple-600 hover:bg-purple-700 text-white border-none">Update Profile</Button>
-                  </div>
-                )}
+
+                  {/* Question Text Below Buttons */}
+                  {showQuestion && (
+                    <div className="mt-4 bg-[#252525] px-5 py-3 rounded-lg shadow-md border border-purple-500 animate-fade-in text-center">
+                      <p className="text-lg text-purple-300 font-semibold">{question}</p>
+                    </div>
+                  )}
+                </div>
+
+
+                {/* Audio Recorder */}
+                <div className="mt-6 bg-[#252525] p-5 rounded-lg">
+                  {userData.username ? (
+                    <AudioRecorder username={userData.username} email={userData.email} userId={userData.userId} interviewQuestion={question} />
+                  ) : (
+                    <div className="text-center py-12 bg-[#252525] rounded-lg">
+                      <p className="text-purple-200 mb-4">Please complete your profile to access the recorder</p>
+                      <Button className="bg-purple-600 hover:bg-purple-700 text-white border-none">Update Profile</Button>
+                    </div>
+                  )}
+                </div>
               </CardContent>
-              <CardFooter className="flex flex-col items-start border-t border-[#333] pt-5 bg-[#252525]">
-                <h4 className="text-sm font-medium mb-3 text-white">Tips for a great recording:</h4>
-                <ul className="text-sm text-purple-200 space-y-2 opacity-90">
-                  <li className="flex items-start">
-                    <span className="text-purple-400 mr-2">•</span>
-                    Find a quiet environment with minimal background noise
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-purple-400 mr-2">•</span>
-                    Speak clearly and at a moderate pace
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-purple-400 mr-2">•</span>
-                    Test your microphone before starting the actual interview
-                  </li>
-                </ul>
-              </CardFooter>
             </Card>
           </div>
         )}
 
         <Separator className="my-10 bg-[#333]" />
-
-       
       </div>
     </div>
-  )
+  );
 }
 
-export default Interview
-
+export default Interview;

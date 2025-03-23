@@ -10,9 +10,10 @@ interface VideoRecorderProps {
   username: string;
   email: string;
   userId: string;
+  interviewQuestion: string;
 }
 
-const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
+const VideoRecorder = ({ username, email, userId, interviewQuestion }: VideoRecorderProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -85,7 +86,7 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
               });
 
               // Define the user's question
-              const userQuestion = "What are functions in programming?";
+              const userQuestion = interviewQuestion;
 
               // Generate content with the user's audio response
               const result = await model.generateContent([
@@ -105,10 +106,10 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
 
               // Generate expected answer using the model
               const expectedAnswerResult = await model.generateContent([
-                { text: `What are functions in programming?` },
+                { text: `Provide a brief answer for: "${userQuestion}"` },
               ]);
               const expectedAnswer = await expectedAnswerResult.response.text();
-              // console.log("Expected Answer:", expectedAnswer);
+              console.log("Expected Answer:", expectedAnswer);
 
               // Check relevancy
               // let relevancyScore = 0;
@@ -135,7 +136,7 @@ const VideoRecorder = ({ username, email, userId }: VideoRecorderProps) => {
       }
     }
     sendVideo();
-  }, [mediaBlobUrl, username, email, userId]);
+  }, [mediaBlobUrl, username, email, userId, interviewQuestion]);
 
   const startPreview = async () => {
     try {
