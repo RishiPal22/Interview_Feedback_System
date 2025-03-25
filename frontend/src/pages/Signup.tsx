@@ -1,76 +1,102 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '../Client'
-import { useError } from '../context/UseError';
-import { Link } from 'react-router-dom';
-function Signup() {
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { supabase } from "../Client";
 
-    const navigate = useNavigate();
-    const { error, setError } = useError();
+const Signup = () => {
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
 
-    const [formData, setFormData] = useState({ email: '', password: '', username: '' })
+    const { user, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { username },
+      },
+    });
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData(prev => ({ ...prev, [e.target.id]: e.target.value }))
+    setLoading(false);
+    if (error) {
+      setError(error.message);
+    } else {
+      setSuccess("Signup successful! Check your email for verification.");
+      setUsername("");
+      setEmail("");
+      setPassword("");
     }
+  };
 
-    
-    const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault()
-        setError(null)
-        if (!formData.email || !formData.password || !formData.username) {
-            setError('Please fill in all fields')
-            return
-        }
-    
-        const {error} = await supabase.auth.signUp({
-            email: formData.email,
-            password: formData.password,
-            options: {
-                data: { username: formData.username } // Store username as metadata
-            }
-        });
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-black p-6">
+      <div className="w-full max-w-md bg-[#1e1e1e] text-white rounded-lg shadow-lg p-8">
+        <h2 className="text-2xl font-bold text-purple-400 text-center mb-6">
+          Create an Account
+        </h2>
 
-        if(error) {
-            setError(error.message)
-        }
-        else{
-            navigate('/')
-          }
+        {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+        {success && <p className="text-green-400 text-sm text-center">{success}</p>}
 
+        <form onSubmit={handleSignup} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-purple-300">Username</label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="mt-1 w-full p-2 border border-purple-500 bg-[#2d2d2d] text-white rounded-md focus:ring-purple-500 focus:border-purple-500"
+              required
+            />
+          </div>
 
-    };
-    return (
-        <>
-            <div className='flex flex-col h-screen w-screen items-center justify-start sm:justify-center my-3.5'>
+          <div>
+            <label className="block text-sm font-medium text-purple-300">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="mt-1 w-full p-2 border border-purple-500 bg-[#2d2d2d] text-white rounded-md focus:ring-purple-500 focus:border-purple-500"
+              required
+            />
+          </div>
 
-                <div className='flex flex-col sm:h-[450px] sm:w-140 w-80 bg-gray-200 items-center p-8 sm:p-8'>
-                    <h1 className='text-gray-800 text-2xl sm:text-5xl  '>Create your account</h1>
-                    <hr className="border-gray-400 sm:my-2 my-4 w-full" />
-                    {error && <p className='text-red-500'>{error}</p>}
-                    <div className='flex flex-col items-center justify-center h-full w-full'>
-                        <form className='flex flex-col items-center justify-center gap-4 m-2 p-2 w-80 sm:w-96' onSubmit={handleSignUp}>
-                            <input value={formData.username}
-                                onChange={handleChange} placeholder='Username' type='text' id='username'
-                                className="border bg-white sm:w-80 w-48 border-gray-300 box-border p-2 shadow-md focus:ring-2 focus:ring-blue-400  focus:outline-none rounded-lg"
-                                required />
-                            <input value={formData.email} placeholder='email'
-                                className="border sm:w-80 w-48 bg-white border-gray-300 box-border p-2 shadow-md focus:ring-2 focus:ring-blue-400 focus:outline-none rounded-lg"
+          <div>
+            <label className="block text-sm font-medium text-purple-300">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="mt-1 w-full p-2 border border-purple-500 bg-[#2d2d2d] text-white rounded-md focus:ring-purple-500 focus:border-purple-500"
+              required
+            />
+          </div>
 
-                                onChange={handleChange} type='email' id='email' />
-                            <input value={formData.password}
-                                className="border sm:w-80 w-48 bg-white border-gray-300 box-border p-2 shadow-md focus:ring-2 focus:ring-blue-400 focus:outline-none rounded-lg"
-                                placeholder='password'
-                                onChange={handleChange} type='password' id='password' />
-                            <button className='bg-blue-500 sm:w-80 w-48 rounded-lg uppercase hover:opacity-90 p-1' type='submit'>Sign up</button>
-                            <p>Already have an account? <Link to='/signin'><span className='text-blue-700' >SignIn</span></Link></p>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </>
-    )
-}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-2 text-white bg-purple-600 hover:bg-purple-700 rounded-md transition disabled:bg-gray-400"
+          >
+            {loading ? "Signing up..." : "Sign Up"}
+          </button>
+        </form>
+
+        <p className="text-sm text-gray-400 mt-4 text-center">
+          Already have an account?{" "}
+          <Link to="/signin" className="text-purple-400 hover:underline">
+            Sign In
+          </Link>
+        </p>
+      </div>
+    </div>
+  );
+};
 
 export default Signup;
