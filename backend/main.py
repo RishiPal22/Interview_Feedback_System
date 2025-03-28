@@ -200,6 +200,7 @@ async def process_video(data: dict = Body(...)):
         return {
             "frames": frames,
             "average_confidence_percentage": average_confidence_percentage
+            
         }
 
     except Exception as e:
