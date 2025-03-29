@@ -11,9 +11,11 @@ interface VideoFramesProps {
   userId: string;
   recordingStopped: boolean;
   question: string; // Add question as a prop
+  relevancy: number | null;
+  
 }
 
-const VideoFrames = ({ userId, recordingStopped, question }: VideoFramesProps) => {
+const VideoFrames = ({ userId, recordingStopped, question, relevancy }: VideoFramesProps) => {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [extractedFrames, setExtractedFrames] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -62,7 +64,10 @@ const VideoFrames = ({ userId, recordingStopped, question }: VideoFramesProps) =
         const response = await fetch(FASTAPI_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ video_url: videoUrl }),
+          body: JSON.stringify({
+            video_url: videoUrl,
+            relevancy_score: relevancy, // Pass relevancy_score to the backend
+          }),
         });
 
         if (!response.ok) {
@@ -80,7 +85,7 @@ const VideoFrames = ({ userId, recordingStopped, question }: VideoFramesProps) =
           .from("videos")
           .update({
             confidence_percentage: data.average_confidence_percentage,
-            relevancy_score: data.relevancy_score, // Assuming relevancy_score is returned by the API
+            relevancy_score: data.relevancy_score, // Ensure relevancy_score is passed here
             question: question, // Insert the question into the database
           })
           .eq("video_url", videoUrl.split("/").pop()); // Match the video by its URL
@@ -98,7 +103,7 @@ const VideoFrames = ({ userId, recordingStopped, question }: VideoFramesProps) =
     };
 
     fetchFrames();
-  }, [videoUrl, recordingStopped, question]);
+  }, [videoUrl, recordingStopped, question, relevancy]);
 
   return (
     <div>

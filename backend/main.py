@@ -181,6 +181,8 @@ def calculate_average_confidence(frames):
 async def process_video(data: dict = Body(...)):
     try:
         video_url = data.get("video_url")
+        relevancy_score = data.get("relevancy_score")  # Get relevancy_score from the request body
+
         if not video_url:
             return {"error": "Missing video_url"}
 
@@ -197,10 +199,11 @@ async def process_video(data: dict = Body(...)):
         # Convert numpy.float32 to native Python float
         average_confidence_percentage = float(average_confidence_percentage)
 
+        # Return the frames, average confidence percentage, and relevancy score
         return {
             "frames": frames,
-            "average_confidence_percentage": average_confidence_percentage
-            
+            "average_confidence_percentage": average_confidence_percentage,
+            "relevancy_score": relevancy_score  # Include relevancy_score in the response
         }
 
     except Exception as e:

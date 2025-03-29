@@ -267,7 +267,14 @@ const VideoRecorder = ({ username, email, userId, interviewQuestion }: VideoReco
             )}
 
             {/* Frames getting displayed which are extracted. */}
-            {userId && recordingStopped && <VideoFrames userId={userId} recordingStopped={recordingStopped} question={interviewQuestion} />} {/* Pass recordingStopped */}
+            {userId && recordingStopped && (
+              <VideoFrames
+                userId={userId}
+                recordingStopped={recordingStopped}
+                question={interviewQuestion}
+                relevancy={relevancy} // Pass relevancy score as a prop
+              />
+            )}
 
             {isRecording && (
               <button onClick={handleStopRecording} className="bg-red-500 text-white px-4 py-2 rounded-lg">
