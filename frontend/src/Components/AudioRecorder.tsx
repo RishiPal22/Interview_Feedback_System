@@ -11,17 +11,19 @@ interface VideoRecorderProps {
   email: string;
   userId: string;
   interviewQuestion: string;
+  setProcessing: (value: boolean) => void; // New prop to set processing state
 }
 
-const VideoRecorder = ({ username, email, userId, interviewQuestion }: VideoRecorderProps) => {
+const VideoRecorder = ({ username, email, userId, interviewQuestion, setProcessing }: VideoRecorderProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [relevancy, setRelevancy] = useState<number | null>(null);
-  const [recordingStopped, setRecordingStopped] = useState(false); // New state variable
+  const [recordingStopped, setRecordingStopped] = useState(false);
+  const [processing, setLocalProcessing] = useState(false);
   const videoPreviewRef = useRef<HTMLVideoElement | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
-  const [debounceTimeout, setDebounceTimeout] = useState<NodeJS.Timeout | null>(null); // New state variable
+  const [debounceTimeout, setDebounceTimeout] = useState<NodeJS.Timeout | null>(null);
 
   const { startRecording, stopRecording, mediaBlobUrl, clearBlobUrl } =
     useReactMediaRecorder({
@@ -30,13 +32,15 @@ const VideoRecorder = ({ username, email, userId, interviewQuestion }: VideoReco
       onStart: () => setIsRecording(true),
       onStop: () => {
         setIsRecording(false);
-        setRecordingStopped(true); // Set recordingStopped to true when recording stops
+        setRecordingStopped(true);
       },
     });
 
   useEffect(() => {
     async function sendVideo() {
       if (mediaBlobUrl) {
+        setProcessing(true); // Set processing to true when video analysis starts
+        setLocalProcessing(true); // Set processing to true when video analysis starts
         try {
           const response = await fetch(mediaBlobUrl);
           const blob = await response.blob();
@@ -61,10 +65,6 @@ const VideoRecorder = ({ username, email, userId, interviewQuestion }: VideoReco
             const { data: fileData, error: fileError } = await supabase.storage
               .from("videosstore")
               .download(videoUrl);
-
-              setTimeout(() => {
-                setRecordingStopped(true);
-              }, 2000);
 
             if (fileError) {
               console.error("Error downloading video:", fileError.message);
@@ -105,7 +105,6 @@ const VideoRecorder = ({ username, email, userId, interviewQuestion }: VideoReco
 
               // Process AI response
               const responseText = await result.response.text();
-              // console.log("AI Response:", responseText);
               setResult(responseText);
 
               // Generate expected answer using the model
@@ -113,11 +112,9 @@ const VideoRecorder = ({ username, email, userId, interviewQuestion }: VideoReco
                 { text: `Provide a brief answer for: "${userQuestion}"` },
               ]);
               const expectedAnswer = await expectedAnswerResult.response.text();
-              console.log("Expected Answer:", expectedAnswer);
+                console.log("Expected Answer:", expectedAnswer);
 
               // Check relevancy
-              // let relevancyScore = 0;
-
               const similarityResult = await model.generateContent([
                 {
                   text: `Compare the user's response and the expected answer. 
@@ -129,18 +126,21 @@ const VideoRecorder = ({ username, email, userId, interviewQuestion }: VideoReco
               ]);
 
               const relevancyScore = await similarityResult.response.text();
-              console.log("Relevancy Score:", relevancyScore);
+                console.log("Relevancy Score:", relevancyScore);
 
               setRelevancy(parseFloat(relevancyScore));
             }
           }
         } catch (error) {
           console.error("Error processing video:", error);
+        } finally {
+          setProcessing(false); // Set processing to false when video analysis is complete
+          setLocalProcessing(false); // Set processing to false when video analysis is complete
         }
       }
     }
     sendVideo();
-  }, [mediaBlobUrl, username, email, userId, interviewQuestion]);
+  }, [mediaBlobUrl, username, email, userId, interviewQuestion, setProcessing]);
 
   const startPreview = async () => {
     try {
@@ -148,7 +148,7 @@ const VideoRecorder = ({ username, email, userId, interviewQuestion }: VideoReco
         video: true,
         audio: true,
       });
-      console.log("MediaStream received:", mediaStream); // Debugging log
+console.log("MediaStream received:", mediaStream); // Debugging log
       console.log("Video Preview Ref:", videoPreviewRef.current); // Debugging log
 
       if (videoPreviewRef.current) {
@@ -157,7 +157,7 @@ const VideoRecorder = ({ username, email, userId, interviewQuestion }: VideoReco
         setStream(mediaStream);
       }
       setShowPreview(true);
-      // stopPreview();
+// stopPreview();
     } catch (err) {
       console.error("Error accessing camera:", err);
     }
@@ -197,7 +197,7 @@ const VideoRecorder = ({ username, email, userId, interviewQuestion }: VideoReco
     stopPreview();
     setResult(null);
     setRelevancy(null);
-    setRecordingStopped(false); // Reset recordingStopped when starting a new recording
+    setRecordingStopped(false);
   };
 
   useEffect(() => {
@@ -272,7 +272,7 @@ const VideoRecorder = ({ username, email, userId, interviewQuestion }: VideoReco
                 userId={userId}
                 recordingStopped={recordingStopped}
                 question={interviewQuestion}
-                relevancy={relevancy} // Pass relevancy score as a prop
+                relevancy={relevancy}
               />
             )}
 
@@ -284,7 +284,8 @@ const VideoRecorder = ({ username, email, userId, interviewQuestion }: VideoReco
             {mediaBlobUrl && (
               <button
                 onClick={handleNewRecording}
-                className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors"
+                disabled={processing}
+                className={`bg-green-500 text-white px-4 py-2 rounded-lg ${processing ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 <Camera className="w-5 h-5" />
                 New Recording

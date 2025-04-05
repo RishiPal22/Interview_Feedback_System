@@ -21,10 +21,12 @@ function Interview() {
   const [question, setQuestion] = useState("");
   const [showQuestion, setShowQuestion] = useState(false);
   const [availableQuestions, setAvailableQuestions] = useState<string[]>([]);
+  const [processing, setProcessing] = useState(false); // New state for processing
 
   useEffect(() => {
     async function fetchUser() {
       setLoading(true);
+      
       try {
         const {
           data: { session },
@@ -139,7 +141,9 @@ function Interview() {
                         if (!showQuestion && question === "") getNextQuestion(); // Only fetch a new question if it's empty
                         setShowQuestion(!showQuestion);
                       }}
-                      className="bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 text-white px-6 py-2 rounded-lg shadow-lg flex items-center gap-2"
+                      disabled={processing} // Disable button while processing
+                      className={`bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 text-white px-6 py-2 rounded-lg shadow-lg flex items-center gap-2 ${processing ? "opacity-50 cursor-not-allowed" : ""
+                        }`}
                     >
                       <MessageSquare className="h-5 w-5" />
                       {showQuestion ? "Hide Question" : "Show Question"}
@@ -147,8 +151,11 @@ function Interview() {
 
                     {showQuestion && (
                       <Button
+                        disabled={processing} // Disable button while processing
                         onClick={getNextQuestion}
-                        className="bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 text-white px-6 py-2 rounded-lg shadow-lg flex items-center gap-2"
+                        className={`bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 text-white px-6 py-2 rounded-lg shadow-lg flex items-center gap-2 ${
+                          processing ? "opacity-50 cursor-not-allowed" : ""
+                        }`}
                       >
                         <MessageSquare className="h-5 w-5" />
                         Next Question
@@ -168,7 +175,7 @@ function Interview() {
                 {/* Audio Recorder */}
                 <div className="mt-6 bg-[#252525] p-5 rounded-lg">
                   {userData.username ? (
-                    <AudioRecorder username={userData.username} email={userData.email} userId={userData.userId} interviewQuestion={question} />
+                    <AudioRecorder username={userData.username} email={userData.email} userId={userData.userId} interviewQuestion={question} setProcessing={setProcessing} />
                   ) : (
                     <div className="text-center py-12 bg-[#252525] rounded-lg">
                       <p className="text-purple-200 mb-4">Please complete your profile to access the recorder</p>
