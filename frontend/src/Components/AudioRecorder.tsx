@@ -21,6 +21,8 @@ const VideoRecorder = ({ username, email, userId, interviewQuestion, setProcessi
   const [relevancy, setRelevancy] = useState<number | null>(null);
   const [recordingStopped, setRecordingStopped] = useState(false);
   const [processing, setLocalProcessing] = useState(false);
+  const [countdown, setCountdown] = useState(20); // Countdown timer state
+  const countdownRef = useRef<NodeJS.Timeout | null>(null); // Ref to manage the timer
   const videoPreviewRef = useRef<HTMLVideoElement | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [debounceTimeout, setDebounceTimeout] = useState<NodeJS.Timeout | null>(null);
@@ -29,12 +31,37 @@ const VideoRecorder = ({ username, email, userId, interviewQuestion, setProcessi
     useReactMediaRecorder({
       audio: true,
       video: true,
-      onStart: () => setIsRecording(true),
+      onStart: () => {
+        setIsRecording(true);
+        startCountdown(); // Start the countdown when recording begins
+      },
       onStop: () => {
         setIsRecording(false);
+        stopCountdown(); // Stop the countdown when recording stops
         setRecordingStopped(true);
       },
     });
+
+  const startCountdown = () => {
+    setCountdown(20); // Reset the countdown to 20 seconds
+    countdownRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          stopRecording(); // Stop recording when the timer reaches 0
+          stopCountdown();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const stopCountdown = () => {
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+      countdownRef.current = null;
+    }
+  };
 
   useEffect(() => {
     async function sendVideo() {
@@ -181,6 +208,7 @@ console.log("MediaStream received:", mediaStream); // Debugging log
   const handleStopRecording = () => {
     stopRecording();
     stopPreview();
+    stopCountdown(); // Stop the countdown manually if recording is stopped early
 
     // Add debounce to delay frame extraction
     if (debounceTimeout) {
@@ -198,6 +226,7 @@ console.log("MediaStream received:", mediaStream); // Debugging log
     setResult(null);
     setRelevancy(null);
     setRecordingStopped(false);
+    setCountdown(20); // Reset the countdown for a new recording
   };
 
   useEffect(() => {
@@ -205,6 +234,12 @@ console.log("MediaStream received:", mediaStream); // Debugging log
       startPreview();
     }
   }, [showPreview]);
+
+  useEffect(() => {
+    return () => {
+      stopCountdown(); // Cleanup the timer on component unmount
+    };
+  }, []);
 
   return (
     <Card className="w-full max-w-2xl mx-auto">
@@ -216,6 +251,13 @@ console.log("MediaStream received:", mediaStream); // Debugging log
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
+          {/* Timer Display */}
+          {isRecording && (
+            <div className="text-center text-lg font-bold text-red-500">
+              Recording ends in: {countdown}s
+            </div>
+          )}
+
           {/* Preview Window */}
           {showPreview && !mediaBlobUrl && (
             <div className="relative rounded-lg overflow-hidden bg-gray-900 aspect-video">
