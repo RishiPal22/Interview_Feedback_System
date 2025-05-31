@@ -2,12 +2,14 @@
 
 import { useEffect, useState, useRef } from "react"
 import { supabase } from "../Client"
-import AudioRecorder from "../Components/AudioRecorder"
-import { User, Mail, Loader2, MessageSquare, Video } from "lucide-react"
+// import VideoRecorder from "../Components/VideoRecorder"
+import VideoRecorder from "../Components/AudioRecorder"
+import { User, Mail, Loader2, MessageSquare, Video, Camera, Play } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../Components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "../Components/ui/avatar"
 import { Button } from "../Components/ui/button"
 import { Separator } from "../Components/ui/separator"
+import { Badge } from "../Components/ui/badge"
 
 function Interview() {
   const [userData, setUserData] = useState({ username: "", email: "", userId: "" })
@@ -16,7 +18,7 @@ function Interview() {
   const [showQuestion, setShowQuestion] = useState(false)
   const [availableQuestions, setAvailableQuestions] = useState<string[]>([])
   const [processing, setProcessing] = useState(false)
-  const [isFlipped, setIsFlipped] = useState(false)
+  const [isInterviewStarted, setIsInterviewStarted] = useState(false)
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
 
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -25,7 +27,9 @@ function Interview() {
     async function fetchUser() {
       setLoading(true)
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
         if (session) {
           const { user } = session
           setUserData({
@@ -75,6 +79,7 @@ function Interview() {
 
     setAvailableQuestions(availableQuestions.filter((_, i) => i !== randomIndex))
     setQuestion(nextQuestion)
+    setShowQuestion(true)
   }
 
   const getInitials = (name: string): string => {
@@ -83,7 +88,7 @@ function Interview() {
 
   const startInterview = async () => {
     try {
-      setIsFlipped(true)
+      setIsInterviewStarted(true)
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       setCameraStream(stream)
       if (videoRef.current) {
@@ -91,163 +96,181 @@ function Interview() {
       }
       if (question === "") {
         getNextQuestion()
-        setShowQuestion(true)
       }
     } catch (error) {
       console.error("Error accessing camera:", error)
       alert("Could not access camera. Please check your permissions.")
-      setIsFlipped(false)
+      setIsInterviewStarted(false)
     }
   }
 
-  const stopCamera = () => {
+  const stopInterview = () => {
     if (cameraStream) {
       cameraStream.getTracks().forEach((track) => track.stop())
       setCameraStream(null)
     }
-    setIsFlipped(false)
+    setIsInterviewStarted(false)
+    setShowQuestion(false)
   }
 
   return (
-    <div className="bg-[#121212] h-screen text-white">
-      <div className="container h-full bg-amber-800 mx-auto py-1 max-w-5xl">
-        <div className="flex flex-col items-center mb-4">
-          <h1 className="text-4xl font-bold mb-3 text-transparent bg-gradient-to-r from-purple-600 to-purple-400 bg-clip-text">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+      <div className="container mx-auto py-8 px-4 max-w-7xl">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             Interview Session
           </h1>
-          <p className="text-purple-200 text-center max-w-md opacity-80">
-            Record your interview responses with our professional audio recording tool.
+          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+            Record your interview responses with our professional video recording platform. Get AI-powered analysis and
+            feedback on your performance.
           </p>
         </div>
 
         {loading ? (
-          <Card className="w-full bg-[#1E1E1E] border-[#333] shadow-xl">
+          <Card className="max-w-md mx-auto">
             <CardContent className="flex items-center justify-center py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
-              <span className="ml-2 text-lg text-purple-200">Loading your profile...</span>
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600 mr-3" />
+              <span className="text-lg">Loading your profile...</span>
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-5 md:grid-cols-[1fr_2.5fr] sm:grid-cols-[1fr_2fr] sm:h-[600px] bg-amber-300 overflow-hidden">
-            {/* Profile Card */}
-            <Card className="bg-[#1E1E1E] border-[#333] shadow-xl overflow-auto">
-              <CardHeader className="border-b border-[#333] bg-[#252525]">
-                <CardTitle className="text-white">Profile</CardTitle>
-                <CardDescription className="text-purple-300">Your interview account details</CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-col items-center space-y-6 pt-8">
-                <div className="relative">
-                  <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-purple-400 rounded-full blur opacity-70" />
-                  <Avatar className="h-28 w-28 relative border-2 border-purple-500">
-                    <AvatarImage src={`https://avatar.vercel.sh/${userData.username}`} alt={userData.username} />
-                    <AvatarFallback className="text-2xl bg-[#252525] text-purple-300">
-                      {getInitials(userData.username)}
-                    </AvatarFallback>
-                  </Avatar>
-                </div>
-                <div className="w-full space-y-3 bg-[#252525] p-4 rounded-lg">
-                  <div className="flex items-center justify-center gap-3 text-sm">
-                    <User className="h-5 w-5 text-purple-400" />
-                    <span className="font-medium text-white">{userData.username || "No username set"}</span>
+          <div className="grid gap-8 lg:grid-cols-[350px_1fr]">
+            {/* Profile Sidebar */}
+            <div className="space-y-6">
+              <Card className="sticky top-8">
+                <CardHeader className="text-center">
+                  <div className="relative mx-auto mb-4">
+                    <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full blur opacity-30" />
+                    <Avatar className="h-24 w-24 relative border-4 border-background">
+                      <AvatarImage src={`https://avatar.vercel.sh/${userData.username}`} alt={userData.username} />
+                      <AvatarFallback className="text-2xl bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+                        {getInitials(userData.username)}
+                      </AvatarFallback>
+                    </Avatar>
                   </div>
-                  <div className="flex items-center gap-3 text-sm">
-                    <Mail className="h-5 w-5 text-purple-400" />
-                    <span className="text-gray-300">{userData.email || "No email available"}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Interview Card Flip */}
-            <div className="relative w-full perspective-1000">
-              <div
-                className={`relative w-full h-full transition-transform duration-700 ${
-                  isFlipped ? "rotate-y-180" : ""
-                } [transform-style:preserve-3d]`}
-              >
-                {/* Front */}
-                <Card className="absolute w-full h-full [backface-visibility:hidden] bg-[#1E1E1E] border-[#333] shadow-xl">
-                  <CardHeader className="border-b p-4 border-[#333] bg-[#252525]">
-                    <CardTitle className="text-white">Interview Session</CardTitle>
-                    <CardDescription className="text-purple-300">Ready to start your interview?</CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex flex-col items-center justify-center h-[400px] p-4">
-                    <div className="text-center space-y-4">
-                      <div className="flex justify-center">
-                        <div className="relative">
-                          <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-purple-400 rounded-full blur opacity-70" />
-                          <div className="relative bg-[#252525] p-6 rounded-full">
-                            <Video className="h-16 w-16 text-purple-400" />
-                          </div>
-                        </div>
-                      </div>
-                      <p className="text-purple-200 text-lg">
-                        Click the button below to start your interview session.
-                        <br />
-                        Make sure your camera and microphone are ready.
-                      </p>
-                      <Button
-                        onClick={startInterview}
-                        disabled={!userData.username}
-                        className="bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 text-white px-8 py-6 text-lg rounded-lg shadow-lg"
-                      >
-                        Start Interview
-                      </Button>
-                      {!userData.username && (
-                        <p className="text-red-400 text-sm">Please complete your profile to start the interview</p>
-                      )}
+                  <CardTitle className="text-xl">{userData.username || "Anonymous User"}</CardTitle>
+                  <CardDescription>{userData.email}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                      <User className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm font-medium">{userData.username || "No username set"}</span>
                     </div>
+                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                      <Mail className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm">{userData.email || "No email available"}</span>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm">Session Status</h4>
+                    <Badge variant={isInterviewStarted ? "default" : "secondary"} className="w-full justify-center">
+                      {isInterviewStarted ? "Interview Active" : "Ready to Start"}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Main Interview Area */}
+            <div className="space-y-6">
+              {!isInterviewStarted ? (
+                /* Welcome Screen */
+                <Card className="text-center">
+                  <CardHeader>
+                    <div className="mx-auto mb-6 relative">
+                      <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full blur opacity-30" />
+                      <div className="relative bg-background p-6 rounded-full border">
+                        <Video className="h-12 w-12 text-blue-600" />
+                      </div>
+                    </div>
+                    <CardTitle className="text-2xl mb-2">Ready to Start Your Interview?</CardTitle>
+                    <CardDescription className="text-base">
+                      Click the button below to begin your interview session. Make sure your camera and microphone are
+                      ready.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                      <div className="flex items-center gap-2 justify-center p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+                        <Camera className="h-4 w-4 text-blue-600" />
+                        <span>Camera Access</span>
+                      </div>
+                      <div className="flex items-center gap-2 justify-center p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
+                        <MessageSquare className="h-4 w-4 text-green-600" />
+                        <span>AI Analysis</span>
+                      </div>
+                      <div className="flex items-center gap-2 justify-center p-3 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
+                        <Play className="h-4 w-4 text-purple-600" />
+                        <span>Video Recording</span>
+                      </div>
+                    </div>
+
+                    <Button
+                      onClick={startInterview}
+                      disabled={!userData.username}
+                      size="lg"
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-6 text-lg"
+                    >
+                      <Video className="h-5 w-5 mr-2" />
+                      Start Interview Session
+                    </Button>
+
+                    {!userData.username && (
+                      <p className="text-red-500 text-sm">Please complete your profile to start the interview</p>
+                    )}
                   </CardContent>
                 </Card>
-
-                {/* Back */}
-                <Card className="relative w-full h-full [backface-visibility:hidden] rotate-y-180 bg-[#1E1E1E] border-[#333] shadow-xl overflow-hidden">
-                  <CardHeader className="border-b border-[#333] bg-[#252525]">
-                    <div className="flex items-center justify-between w-full">
-                      <div className="flex items-center gap-4">
+              ) : (
+                /* Interview Session */
+                <div className="space-y-6">
+                  {/* Question Display */}
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                      <CardTitle className="text-lg">Interview Question</CardTitle>
+                      <div className="flex items-center gap-3">
                         <Button
-                          onClick={() => {
-                            getNextQuestion()
-                            setShowQuestion(true)
-                          }}
-                          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2"
+                          onClick={getNextQuestion}
+                          variant="outline"
+                          size="sm"
+                          className="flex items-center gap-2"
                         >
                           <MessageSquare className="h-4 w-4" />
-                          <span>Next Question</span>
+                          Next Question
+                        </Button>
+                        <Button onClick={stopInterview} variant="destructive" size="sm">
+                          End Session
                         </Button>
                       </div>
-
-                      {userData.username && (
-                        <div className="flex items-center gap-4">
-                          <AudioRecorder
-                            username={userData.username}
-                            email={userData.email}
-                            userId={userData.userId}
-                            interviewQuestion={question}
-                            setProcessing={setProcessing}
-                          />
+                    </CardHeader>
+                    {showQuestion && question && (
+                      <CardContent>
+                        <div className="p-6 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                          <p className="text-lg font-medium text-center">{question}</p>
                         </div>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-2 overflow-y-auto max-h-[calc(500px-80px)]">
-                    {showQuestion && (
-                      <div className="mb-4 bg-[#252525] px-5 py-3 rounded-lg shadow-md border border-purple-500 animate-fade-in text-center">
-                        <p className="text-lg text-purple-300 font-semibold">{question}</p>
-                      </div>
+                      </CardContent>
                     )}
+                  </Card>
 
-                    <div className="relative mb-4 bg-black rounded-lg overflow-hidden aspect-video">
-                      <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+                  {/* Video Recorder Component */}
+                  {userData.username && (
+                    <VideoRecorder
+                      username={userData.username}
+                      email={userData.email}
+                      userId={userData.userId}
+                      interviewQuestion={question}
+                      setProcessing={setProcessing}
+                    />
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}
-
-        <Separator className="my-10 bg-[#333]" />
       </div>
     </div>
   )
