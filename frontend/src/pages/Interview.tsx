@@ -109,9 +109,9 @@ function Interview() {
   }
 
   return (
-    <div className="bg-[#121212] min-h-screen text-white">
-      <div className="container mx-auto px-4 py-12 max-w-4xl">
-        <div className="flex flex-col items-center mb-10">
+    <div className="bg-[#121212] h-screen text-white">
+      <div className="container h-full bg-amber-800 mx-auto py-1 max-w-5xl">
+        <div className="flex flex-col items-center mb-4">
           <h1 className="text-4xl font-bold mb-3 text-transparent bg-gradient-to-r from-purple-600 to-purple-400 bg-clip-text">
             Interview Session
           </h1>
@@ -128,9 +128,9 @@ function Interview() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-8 md:grid-cols-[1fr_2fr]">
+          <div className="grid gap-5 md:grid-cols-[1fr_2.5fr] sm:grid-cols-[1fr_2fr] sm:h-[600px] bg-amber-300 overflow-hidden">
             {/* Profile Card */}
-            <Card className="bg-[#1E1E1E] border-[#333] shadow-xl overflow-hidden">
+            <Card className="bg-[#1E1E1E] border-[#333] shadow-xl overflow-auto">
               <CardHeader className="border-b border-[#333] bg-[#252525]">
                 <CardTitle className="text-white">Profile</CardTitle>
                 <CardDescription className="text-purple-300">Your interview account details</CardDescription>
@@ -146,7 +146,7 @@ function Interview() {
                   </Avatar>
                 </div>
                 <div className="w-full space-y-3 bg-[#252525] p-4 rounded-lg">
-                  <div className="flex items-center gap-3 text-sm">
+                  <div className="flex items-center justify-center gap-3 text-sm">
                     <User className="h-5 w-5 text-purple-400" />
                     <span className="font-medium text-white">{userData.username || "No username set"}</span>
                   </div>
@@ -159,7 +159,7 @@ function Interview() {
             </Card>
 
             {/* Interview Card Flip */}
-            <div className="relative h-[500px] w-full perspective-1000">
+            <div className="relative w-full perspective-1000">
               <div
                 className={`relative w-full h-full transition-transform duration-700 ${
                   isFlipped ? "rotate-y-180" : ""
@@ -167,12 +167,12 @@ function Interview() {
               >
                 {/* Front */}
                 <Card className="absolute w-full h-full [backface-visibility:hidden] bg-[#1E1E1E] border-[#333] shadow-xl">
-                  <CardHeader className="border-b border-[#333] bg-[#252525]">
+                  <CardHeader className="border-b p-4 border-[#333] bg-[#252525]">
                     <CardTitle className="text-white">Interview Session</CardTitle>
                     <CardDescription className="text-purple-300">Ready to start your interview?</CardDescription>
                   </CardHeader>
-                  <CardContent className="flex flex-col items-center justify-center h-[400px] p-6">
-                    <div className="text-center space-y-6">
+                  <CardContent className="flex flex-col items-center justify-center h-[400px] p-4">
+                    <div className="text-center space-y-4">
                       <div className="flex justify-center">
                         <div className="relative">
                           <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-purple-400 rounded-full blur opacity-70" />
@@ -201,26 +201,24 @@ function Interview() {
                 </Card>
 
                 {/* Back */}
-                <Card className="absolute w-full h-full [backface-visibility:hidden] rotate-y-180 bg-[#1E1E1E] border-[#333] shadow-xl overflow-hidden">
-                  <CardHeader className="border-b border-[#333] bg-[#252525] flex flex-row justify-between items-start">
-                    <div className="flex flex-col sm:flex-row items-center gap-2">
-                      <Button
-                        onClick={() => {
-                          getNextQuestion()
-                          setShowQuestion(true)
-                        }}
-                        disabled={processing}
-                        className={`bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 text-white px-4 py-2 rounded-lg shadow flex items-center gap-2 ${
-                          processing ? "opacity-50 cursor-not-allowed" : ""
-                        }`}
-                      >
-                        <MessageSquare className="h-4 w-4" />
-                        <span>Next</span>
-                      </Button>
-
+                <Card className="relative w-full h-full [backface-visibility:hidden] rotate-y-180 bg-[#1E1E1E] border-[#333] shadow-xl overflow-hidden">
+                  <CardHeader className="border-b border-[#333] bg-[#252525]">
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center gap-4">
+                        <Button
+                          onClick={() => {
+                            getNextQuestion()
+                            setShowQuestion(true)
+                          }}
+                          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2"
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                          <span>Next Question</span>
+                        </Button>
+                      </div>
 
                       {userData.username && (
-                        <div className="flex-shrink-0 w-full sm:w-auto">
+                        <div className="flex items-center gap-4">
                           <AudioRecorder
                             username={userData.username}
                             email={userData.email}
@@ -232,7 +230,7 @@ function Interview() {
                       )}
                     </div>
                   </CardHeader>
-                  <CardContent className="p-6 overflow-y-auto max-h-[calc(500px-80px)]">
+                  <CardContent className="p-2 overflow-y-auto max-h-[calc(500px-80px)]">
                     {showQuestion && (
                       <div className="mb-4 bg-[#252525] px-5 py-3 rounded-lg shadow-md border border-purple-500 animate-fade-in text-center">
                         <p className="text-lg text-purple-300 font-semibold">{question}</p>

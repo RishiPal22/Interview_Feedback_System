@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { GoogleGenerativeAI } from "@google/generative-ai"; // Adjust the import path as needed
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { supabase } from "@/Client";
 import { useReactMediaRecorder } from "react-media-recorder";
 import { Camera, Eye } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+// import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import { CardContent } from "@/Components/ui/card";
 import VideoFrames from "./VideoFrames";
 
 interface VideoRecorderProps {
@@ -11,7 +12,7 @@ interface VideoRecorderProps {
   email: string;
   userId: string;
   interviewQuestion: string;
-  setProcessing: (value: boolean) => void; // New prop to set processing state
+  setProcessing: (value: boolean) => void;
 }
 
 const VideoRecorder = ({ username, email, userId, interviewQuestion, setProcessing }: VideoRecorderProps) => {
@@ -21,8 +22,8 @@ const VideoRecorder = ({ username, email, userId, interviewQuestion, setProcessi
   const [relevancy, setRelevancy] = useState<number | null>(null);
   const [recordingStopped, setRecordingStopped] = useState(false);
   const [processing, setLocalProcessing] = useState(false);
-  const [countdown, setCountdown] = useState(20); // Countdown timer state
-  const countdownRef = useRef<NodeJS.Timeout | null>(null); // Ref to manage the timer
+  const [countdown, setCountdown] = useState(20);
+  const countdownRef = useRef<NodeJS.Timeout | null>(null);
   const videoPreviewRef = useRef<HTMLVideoElement | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [debounceTimeout, setDebounceTimeout] = useState<NodeJS.Timeout | null>(null);
@@ -33,21 +34,21 @@ const VideoRecorder = ({ username, email, userId, interviewQuestion, setProcessi
       video: true,
       onStart: () => {
         setIsRecording(true);
-        startCountdown(); // Start the countdown when recording begins
+        startCountdown();
       },
       onStop: () => {
         setIsRecording(false);
-        stopCountdown(); // Stop the countdown when recording stops
+        stopCountdown();
         setRecordingStopped(true);
       },
     });
 
   const startCountdown = () => {
-    setCountdown(20); // Reset the countdown to 20 seconds
+    setCountdown(20);
     countdownRef.current = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
-          stopRecording(); // Stop recording when the timer reaches 0
+          stopRecording();
           stopCountdown();
           return 0;
         }
@@ -66,8 +67,8 @@ const VideoRecorder = ({ username, email, userId, interviewQuestion, setProcessi
   useEffect(() => {
     async function sendVideo() {
       if (mediaBlobUrl) {
-        setProcessing(true); // Set processing to true when video analysis starts
-        setLocalProcessing(true); // Set processing to true when video analysis starts
+        setProcessing(true);
+        setLocalProcessing(true);
         try {
           const response = await fetch(mediaBlobUrl);
           const blob = await response.blob();
@@ -139,7 +140,7 @@ const VideoRecorder = ({ username, email, userId, interviewQuestion, setProcessi
                 { text: `Provide a brief answer for: "${userQuestion}"` },
               ]);
               const expectedAnswer = await expectedAnswerResult.response.text();
-                console.log("Expected Answer:", expectedAnswer);
+              console.log("Expected Answer:", expectedAnswer);
 
               // Check relevancy
               const similarityResult = await model.generateContent([
@@ -153,7 +154,7 @@ const VideoRecorder = ({ username, email, userId, interviewQuestion, setProcessi
               ]);
 
               const relevancyScore = await similarityResult.response.text();
-                console.log("Relevancy Score:", relevancyScore);
+              console.log("Relevancy Score:", relevancyScore);
 
               setRelevancy(parseFloat(relevancyScore));
             }
@@ -161,8 +162,8 @@ const VideoRecorder = ({ username, email, userId, interviewQuestion, setProcessi
         } catch (error) {
           console.error("Error processing video:", error);
         } finally {
-          setProcessing(false); // Set processing to false when video analysis is complete
-          setLocalProcessing(false); // Set processing to false when video analysis is complete
+          setProcessing(false);
+          setLocalProcessing(false);
         }
       }
     }
@@ -175,16 +176,13 @@ const VideoRecorder = ({ username, email, userId, interviewQuestion, setProcessi
         video: true,
         audio: true,
       });
-console.log("MediaStream received:", mediaStream); // Debugging log
-      console.log("Video Preview Ref:", videoPreviewRef.current); // Debugging log
 
       if (videoPreviewRef.current) {
         videoPreviewRef.current.srcObject = mediaStream;
-        videoPreviewRef.current.play();
+        await videoPreviewRef.current.play();
         setStream(mediaStream);
+        setShowPreview(true);
       }
-      setShowPreview(true);
-// stopPreview();
     } catch (err) {
       console.error("Error accessing camera:", err);
     }
@@ -192,8 +190,11 @@ console.log("MediaStream received:", mediaStream); // Debugging log
 
   const stopPreview = () => {
     if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
+      stream.getTracks().forEach(track => track.stop());
       setStream(null);
+    }
+    if (videoPreviewRef.current) {
+      videoPreviewRef.current.srcObject = null;
     }
     setShowPreview(false);
   };
@@ -208,15 +209,14 @@ console.log("MediaStream received:", mediaStream); // Debugging log
   const handleStopRecording = () => {
     stopRecording();
     stopPreview();
-    stopCountdown(); // Stop the countdown manually if recording is stopped early
+    stopCountdown();
 
-    // Add debounce to delay frame extraction
     if (debounceTimeout) {
       clearTimeout(debounceTimeout);
     }
     const timeout = setTimeout(() => {
       setRecordingStopped(true);
-    }, 5000); // Adjust the delay as needed
+    }, 5000);
     setDebounceTimeout(timeout);
   };
 
@@ -226,30 +226,26 @@ console.log("MediaStream received:", mediaStream); // Debugging log
     setResult(null);
     setRelevancy(null);
     setRecordingStopped(false);
-    setCountdown(20); // Reset the countdown for a new recording
+    setCountdown(20);
   };
 
-  useEffect(() => {
-    if (showPreview) {
-      startPreview();
-    }
-  }, [showPreview]);
-
+  // Clean up resources when component unmounts
   useEffect(() => {
     return () => {
-      stopCountdown(); // Cleanup the timer on component unmount
+      stopCountdown();
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+      if (debounceTimeout) {
+        clearTimeout(debounceTimeout);
+      }
     };
-  }, []);
+  }, [stream, debounceTimeout]);
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Camera className="w-6 h-6  text-purple-400" />
-          <span className="text-white">Video Recorder</span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
+<>
+      
+      <CardContent className="overflow-y-auto max-h-[calc(100vh-180px)] pb-6">
         <div className="space-y-4">
           {/* Timer Display */}
           {isRecording && (
@@ -260,62 +256,48 @@ console.log("MediaStream received:", mediaStream); // Debugging log
 
           {/* Preview Window */}
           {showPreview && !mediaBlobUrl && (
-            <div className="relative rounded-lg overflow-hidden bg-gray-900 aspect-video">
-              <video
-                ref={videoPreviewRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full h-full object-cover"
-              />
+            <div className="relative w-full bg-gray-900/95 rounded-xl overflow-hidden shadow-lg mb-4">
+              <div className="aspect-video w-full">
+                <video
+                  ref={videoPreviewRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+              </div>
             </div>
           )}
 
           {/* Recorded Video Playback */}
           {mediaBlobUrl && (
-            <div className="rounded-lg overflow-hidden bg-gray-900 aspect-video">
-              <video src={mediaBlobUrl} controls className="w-full h-full object-cover" />
-            </div>
-          )}
-
-          {/* Display Result */}
-          {result && (
-            <div className="bg-gray-100 p-4 rounded-lg">
-              <h2 className="text-lg font-bold">Transcription Result:</h2>
-              <p>{result}</p>
-            </div>
-          )}
-
-          {/* Display Relevancy Percentage */}
-          {relevancy !== null && (
-            <div className="bg-gray-200 p-4 rounded-lg text-center">
-              <h2 className="text-lg font-bold">Relevancy Score:</h2>
-              <p className="text-xl font-semibold">{relevancy}%</p>
+            <div className="relative w-full bg-gray-900/95 rounded-xl overflow-hidden shadow-lg mb-4">
+              <div className="aspect-video w-full">
+                <video
+                  src={mediaBlobUrl}
+                  controls
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+              </div>
             </div>
           )}
 
           {/* Controls */}
-          <div className="flex gap-4 justify-center flex-wrap">
+          <div className="flex gap-4 justify-center flex-wrap my-4">
             {!isRecording && !mediaBlobUrl && !showPreview && (
-              <button onClick={startPreview} className="bg-gray-500 text-white px-4 py-2 rounded-lg">
+              <button onClick={startPreview} className="bg-gray-500 text-white px-4 py-2 rounded-lg flex items-center gap-2">
                 <Eye className="w-5 h-5" /> Preview Camera
               </button>
             )}
 
-            {!isRecording && !mediaBlobUrl && (
-              <button onClick={handleStartRecording} className="bg-blue-500 text-white px-4 py-2 rounded-lg">
+            {!isRecording && (showPreview || !mediaBlobUrl) && (
+              <button
+                onClick={handleStartRecording}
+                className="bg-blue-500 text-white px-4 py-2 rounded-lg"
+                disabled={processing}
+              >
                 Start Recording
               </button>
-            )}
-
-            {/* Frames getting displayed which are extracted. */}
-            {userId && recordingStopped && (
-              <VideoFrames
-                userId={userId}
-                recordingStopped={recordingStopped}
-                question={interviewQuestion}
-                relevancy={relevancy}
-              />
             )}
 
             {isRecording && (
@@ -323,20 +305,51 @@ console.log("MediaStream received:", mediaStream); // Debugging log
                 Stop Recording
               </button>
             )}
+
             {mediaBlobUrl && (
               <button
                 onClick={handleNewRecording}
                 disabled={processing}
-                className={`bg-green-500 text-white px-4 py-2 rounded-lg ${processing ? "opacity-50 cursor-not-allowed" : ""}`}
+                className={`bg-green-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 ${processing ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 <Camera className="w-5 h-5" />
                 New Recording
               </button>
             )}
           </div>
+
+          {/* Display Result - Now with proper overflow handling */}
+          {result && (
+            <div className="bg-muted p-4 rounded-lg max-h-60 overflow-y-auto text-muted-foreground">
+              <h2 className="text-lg font-bold sticky top-0 bg-muted py-2">Transcription Result:</h2>
+              <p className="whitespace-pre-wrap break-words">{result}</p>
+            </div>
+          )}
+
+
+          {/* Display Relevancy Percentage */}
+          {relevancy !== null && (
+            <div className="bg-muted p-4 rounded-lg text-center text-muted-foreground">
+              <h2 className="text-lg font-bold">Relevancy Score:</h2>
+              <p className="text-xl font-semibold">{relevancy}%</p>
+            </div>
+          )}
+
+
+          {/* Video Frames - With scroll containment */}
+          {userId && recordingStopped && (
+            <div className="max-h-80 overflow-y-auto">
+              <VideoFrames
+                userId={userId}
+                recordingStopped={recordingStopped}
+                question={interviewQuestion}
+                relevancy={relevancy}
+              />
+            </div>
+          )}
         </div>
       </CardContent>
-    </Card>
+      </>
   );
 };
 
