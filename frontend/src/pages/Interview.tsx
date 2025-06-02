@@ -20,6 +20,7 @@ function Interview() {
   const [processing, setProcessing] = useState(false)
   const [isInterviewStarted, setIsInterviewStarted] = useState(false)
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
+  const [hasRecorded, setHasRecorded] = useState(false)
 
   const videoRef = useRef<HTMLVideoElement>(null)
 
@@ -80,6 +81,7 @@ function Interview() {
     setAvailableQuestions(availableQuestions.filter((_, i) => i !== randomIndex))
     setQuestion(nextQuestion)
     setShowQuestion(true)
+    setHasRecorded(false) // <-- Reset when new question is loaded
   }
 
   const getInitials = (name: string): string => {
@@ -238,6 +240,7 @@ function Interview() {
                           variant="outline"
                           size="sm"
                           className="flex items-center gap-2"
+                          disabled={!hasRecorded}
                         >
                           <MessageSquare className="h-4 w-4" />
                           Next Question
@@ -264,6 +267,7 @@ function Interview() {
                       userId={userData.userId}
                       interviewQuestion={question}
                       setProcessing={setProcessing}
+                      setHasRecorded={setHasRecorded} // <-- keep this
                     />
                   )}
                 </div>

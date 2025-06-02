@@ -17,14 +17,21 @@ interface VideoRecorderProps {
   userId: string
   interviewQuestion: string
   setProcessing: (value: boolean) => void
+  setHasRecorded: (value: boolean) => void
 }
 
-const VideoRecorder = ({ username, email, userId, interviewQuestion, setProcessing }: VideoRecorderProps) => {
+const VideoRecorder = ({
+  username,
+  email,
+  userId,
+  interviewQuestion,
+  setProcessing,
+  setHasRecorded,
+}: VideoRecorderProps) => {
   const [isRecording, setIsRecording] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [result, setResult] = useState<string | null>(null)
   const [relevancy, setRelevancy] = useState<number | null>(null)
-  const [recordingStopped, setRecordingStopped] = useState(false)
   const [processing, setLocalProcessing] = useState(false)
   const [countdown, setCountdown] = useState(20)
   const countdownRef = useRef<NodeJS.Timeout | null>(null)
@@ -42,7 +49,7 @@ const VideoRecorder = ({ username, email, userId, interviewQuestion, setProcessi
     onStop: () => {
       setIsRecording(false)
       stopCountdown()
-      setRecordingStopped(true)
+      setHasRecorded(true) // <-- Mark as recorded
     },
   })
 
@@ -161,17 +168,32 @@ const VideoRecorder = ({ username, email, userId, interviewQuestion, setProcessi
         video: true,
         audio: true,
       })
-
-      if (videoPreviewRef.current) {
-        videoPreviewRef.current.srcObject = mediaStream
-        await videoPreviewRef.current.play()
-        setStream(mediaStream)
-        setShowPreview(true)
-      }
-    } catch (err) {
+      setStream(mediaStream)
+      setShowPreview(true)
+    } catch (err: unknown) {
       console.error("Error accessing camera:", err)
+      if (err && typeof err === "object" && "name" in err) {
+        const errorName = (err as { name: string }).name
+        if (errorName === "NotAllowedError") {
+          alert("Please allow camera and microphone access in your browser settings.")
+        } else if (errorName === "NotFoundError") {
+          alert("No camera or microphone found. Please check your device connections.")
+        } else {
+          alert("Failed to start camera preview. Please check your camera and microphone.")
+        }
+      } else {
+        alert("Failed to start camera preview. Please check your camera and microphone.")
+      }
     }
   }
+
+  // Add this useEffect to handle assigning the stream to the video element
+  useEffect(() => {
+    if (showPreview && videoPreviewRef.current && stream) {
+      videoPreviewRef.current.srcObject = stream
+      videoPreviewRef.current.play()
+    }
+  }, [showPreview, stream])
 
   const stopPreview = () => {
     if (stream) {
@@ -210,7 +232,6 @@ const VideoRecorder = ({ username, email, userId, interviewQuestion, setProcessi
     stopPreview()
     setResult(null)
     setRelevancy(null)
-    setRecordingStopped(false)
     setCountdown(20)
   }
 
@@ -328,6 +349,19 @@ const VideoRecorder = ({ username, email, userId, interviewQuestion, setProcessi
               </Button>
             )}
 
+            {/* Stop Preview Button */}
+            {!isRecording && !mediaBlobUrl && showPreview && (
+              <Button
+                onClick={stopPreview}
+                variant="outline"
+                size="lg"
+                className="flex items-center space-x-2 bg-red-600 text-white hover:bg-red-600 hover:text-white"
+              >
+                <Square className="w-5 h-5" />
+                <span>Stop Preview</span>
+              </Button>
+            )}
+
             {!isRecording && (showPreview || !mediaBlobUrl) && (
               <Button
                 onClick={handleStartRecording}
@@ -407,10 +441,10 @@ const VideoRecorder = ({ username, email, userId, interviewQuestion, setProcessi
       )}
 
       {/* Video Frames Analysis */}
-      {userId && recordingStopped && (
+      {userId && mediaBlobUrl && (
         <VideoFrames
           userId={userId}
-          recordingStopped={recordingStopped}
+          recordingStopped={true}
           question={interviewQuestion}
           relevancy={relevancy}
         />

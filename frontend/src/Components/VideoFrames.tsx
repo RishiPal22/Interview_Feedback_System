@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { createClient } from "@supabase/supabase-js"
-import { Play, ImageIcon, TrendingUp, Target, Clock, Activity } from "lucide-react"
+import { ImageIcon, TrendingUp, Target, Clock, Activity } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/Components/ui/card"
 import { Badge } from "@/Components/ui/badge"
 import { Progress } from "@/Components/ui/progress"
@@ -118,19 +118,15 @@ const VideoFrames = ({ userId, recordingStopped, question, relevancy }: VideoFra
     return "text-red-600 bg-red-50 border-red-200"
   }
 
-  const getProgressColor = (score: number) => {
-    if (score >= 80) return "bg-emerald-500"
-    if (score >= 60) return "bg-yellow-500"
-    return "bg-red-500"
-  }
+  // const getProgressColor = (score: number) => {
+  //   if (score >= 80) return "bg-emerald-500"
+  //   if (score >= 60) return "bg-yellow-500"
+  //   return "bg-red-500"
+  // }
 
   return (
     <div className="w-full space-y-6">
       {/* Header */}
-      <div className="text-center space-y-2">
-        <h2 className="text-2xl font-bold">Video Analysis Results</h2>
-        <p className="text-muted-foreground">AI-powered frame extraction and confidence analysis</p>
-      </div>
 
       {/* Loading State */}
       {loading && (
@@ -166,7 +162,7 @@ const VideoFrames = ({ userId, recordingStopped, question, relevancy }: VideoFra
       )}
 
       {/* Results Section */}
-      {extractedFrames.length > 0 && (
+      {extractedFrames.length >= 0 && (
         <div className="space-y-6">
           {/* Metrics Cards */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -197,7 +193,7 @@ const VideoFrames = ({ userId, recordingStopped, question, relevancy }: VideoFra
             </Card>
 
             {/* Frames Count Card */}
-            <Card>
+            {/* <Card>
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center space-x-3">
                   <div className="p-2 bg-purple-100 rounded-lg">
@@ -214,52 +210,10 @@ const VideoFrames = ({ userId, recordingStopped, question, relevancy }: VideoFra
                 <p className="text-sm text-muted-foreground">Key moments captured from your interview session</p>
                 <Badge variant="secondary">Analysis Complete</Badge>
               </CardContent>
-            </Card>
+            </Card> */}
           </div>
 
           {/* Frames Gallery */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>Key Frame Analysis</span>
-                <Badge variant="outline">{extractedFrames.length} frames extracted</Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {extractedFrames.map((frame, index) => (
-                  <div
-                    key={index}
-                    className="group relative bg-gray-100 rounded-lg overflow-hidden border hover:border-blue-300 transition-all duration-300 hover:shadow-lg"
-                  >
-                    <div className="aspect-video relative overflow-hidden">
-                      <img
-                        src={frame || "/placeholder.svg?height=120&width=160"}
-                        alt={`Frame ${index + 1}`}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
-
-                      {/* Overlay */}
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                          <div className="p-2 bg-white/90 backdrop-blur-sm rounded-full">
-                            <Play className="w-4 h-4 text-gray-700" />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Frame Number */}
-                    <div className="absolute top-2 left-2">
-                      <Badge variant="secondary" className="text-xs">
-                        #{index + 1}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
         </div>
       )}
 
