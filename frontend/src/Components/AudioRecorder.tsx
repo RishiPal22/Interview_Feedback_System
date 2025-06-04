@@ -18,7 +18,9 @@ interface VideoRecorderProps {
   interviewQuestion: string
   setProcessing: (value: boolean) => void
   setHasRecorded: (value: boolean) => void
-  getNextQuestion: () => void // <-- Add this line
+  getNextQuestion: () => void
+  questionsAnswered: number
+  maxQuestions: number
 }
 
 const VideoRecorder = ({
@@ -28,7 +30,9 @@ const VideoRecorder = ({
   interviewQuestion,
   setProcessing,
   setHasRecorded,
-  getNextQuestion, 
+  getNextQuestion,
+  questionsAnswered,
+  maxQuestions,
 }: VideoRecorderProps) => {
   const [isRecording, setIsRecording] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
@@ -230,14 +234,14 @@ const VideoRecorder = ({
     setDebounceTimeout(timeout)
   }
 
-  const handleNewRecording = () => {
+  const handleNextRecording = () => {
     clearBlobUrl()
     stopPreview()
     setResult(null)
     setRelevancy(null)
     setCountdown(20)
     setRecordingStopped(false)
-    getNextQuestion() // <-- Move to next question
+    getNextQuestion()
   }
 
   useEffect(() => {
@@ -377,16 +381,16 @@ const VideoRecorder = ({
               </Button>
             )}
 
-            {mediaBlobUrl && (
+            {mediaBlobUrl && questionsAnswered < maxQuestions && (
               <Button
-                onClick={handleNewRecording}
+                onClick={handleNextRecording}
                 disabled={processing}
                 variant="outline"
                 size="lg"
                 className="flex items-center space-x-2"
               >
                 <RotateCcw className="w-5 h-5" />
-                <span>New Recording</span>
+                <span>Record Next Video</span>
               </Button>
             )}
           </div>

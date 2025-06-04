@@ -21,6 +21,8 @@ function Interview() {
   const [isInterviewStarted, setIsInterviewStarted] = useState(false)
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
   const [hasRecorded, setHasRecorded] = useState(false)
+  const [questionsAnswered, setQuestionsAnswered] = useState(0)
+  const [isCompleted, setIsCompleted] = useState(false)
 
   const videoRef = useRef<HTMLVideoElement>(null)
 
@@ -70,18 +72,18 @@ function Interview() {
   }, [cameraStream])
 
   const getNextQuestion = () => {
-    if (availableQuestions.length === 0) {
-      setQuestion("No more questions available.")
+    if (availableQuestions.length === 0 || questionsAnswered >= 2) {
+      setIsCompleted(true)
+      setShowQuestion(false)
       return
     }
-
     const randomIndex = Math.floor(Math.random() * availableQuestions.length)
     const nextQuestion = availableQuestions[randomIndex]
-
     setAvailableQuestions(availableQuestions.filter((_, i) => i !== randomIndex))
     setQuestion(nextQuestion)
     setShowQuestion(true)
-    setHasRecorded(false) // <-- Reset when new question is loaded
+    setHasRecorded(false)
+    setQuestionsAnswered((prev) => prev + 1)
   }
 
   const getInitials = (name: string): string => {
@@ -113,6 +115,15 @@ function Interview() {
     }
     setIsInterviewStarted(false)
     setShowQuestion(false)
+  }
+
+  const handleNewSession = () => {
+    setQuestionsAnswered(0)
+    setIsCompleted(false)
+    setAvailableQuestions([]) // Optionally reload questions
+    setShowQuestion(false)
+    setIsInterviewStarted(false)
+    setQuestion("")
   }
 
   return (
@@ -260,7 +271,7 @@ function Interview() {
                   </Card>
 
                   {/* Video Recorder Component */}
-                  {userData.username && (
+                  {userData.username && !isCompleted && (
                     <VideoRecorder
                       username={userData.username}
                       email={userData.email}
@@ -268,8 +279,21 @@ function Interview() {
                       interviewQuestion={question}
                       setProcessing={setProcessing}
                       setHasRecorded={setHasRecorded}
-                      getNextQuestion={getNextQuestion} 
+                      getNextQuestion={getNextQuestion}
+                      questionsAnswered={questionsAnswered}
+                      maxQuestions={5}
                     />
+                  )}
+                  {isCompleted && (
+                    <Card className="text-center">
+                      <CardHeader>
+                        <CardTitle>Congratulations!</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-lg mb-4">You have completed all 3 interview questions.</p>
+                        <Button onClick={handleNewSession}>Start New Session</Button>
+                      </CardContent>
+                    </Card>
                   )}
                 </div>
               )}
