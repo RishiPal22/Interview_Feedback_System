@@ -267,7 +267,8 @@ function Interview() {
                       userId={userData.userId}
                       interviewQuestion={question}
                       setProcessing={setProcessing}
-                      setHasRecorded={setHasRecorded} // <-- keep this
+                      setHasRecorded={setHasRecorded}
+                      getNextQuestion={getNextQuestion} 
                     />
                   )}
                 </div>

@@ -18,6 +18,7 @@ interface VideoRecorderProps {
   interviewQuestion: string
   setProcessing: (value: boolean) => void
   setHasRecorded: (value: boolean) => void
+  getNextQuestion: () => void // <-- Add this line
 }
 
 const VideoRecorder = ({
@@ -27,6 +28,7 @@ const VideoRecorder = ({
   interviewQuestion,
   setProcessing,
   setHasRecorded,
+  getNextQuestion, 
 }: VideoRecorderProps) => {
   const [isRecording, setIsRecording] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
@@ -34,6 +36,7 @@ const VideoRecorder = ({
   const [relevancy, setRelevancy] = useState<number | null>(null)
   const [processing, setLocalProcessing] = useState(false)
   const [countdown, setCountdown] = useState(20)
+  const [recordingStopped, setRecordingStopped] = useState(false)
   const countdownRef = useRef<NodeJS.Timeout | null>(null)
   const videoPreviewRef = useRef<HTMLVideoElement | null>(null)
   const [stream, setStream] = useState<MediaStream | null>(null)
@@ -233,6 +236,8 @@ const VideoRecorder = ({
     setResult(null)
     setRelevancy(null)
     setCountdown(20)
+    setRecordingStopped(false)
+    getNextQuestion() // <-- Move to next question
   }
 
   useEffect(() => {
@@ -320,20 +325,6 @@ const VideoRecorder = ({
               </div>
             )}
 
-            {/* Recording Overlay */}
-            {isRecording && (
-              <div className="absolute top-4 left-4 right-4">
-                <div className="bg-black/50 backdrop-blur-sm rounded-lg p-3">
-                  <div className="flex items-center justify-between text-white">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                      <span className="text-sm font-medium">Recording</span>
-                    </div>
-                    <span className="text-lg font-bold">{countdown}s</span>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </CardContent>
       </Card>
